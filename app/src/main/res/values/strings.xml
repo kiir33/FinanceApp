@@ -1,0 +1,181 @@
+<resources>
+    <string name="app_name">My Finance</string>
+
+    <!-- Dashboard Screen -->
+    <string name="app_title">My Finance</string>
+    <string name="dashboard_subtitle">Offline Mini Finance App</string>
+    <string name="dashboard_net_portfolio">Net Member Portfolio</string>
+    <string name="dashboard_total_savings">Total Savings</string>
+    <string name="dashboard_total_loans">Total Loans</string>
+    <string name="dashboard_manage_clients">Manage Members</string>
+    <string name="dashboard_backup_restore">Backup &amp; Restore</string>
+    <string name="dashboard_active_client_base">Active Members</string>
+    <string name="dashboard_registered_accounts">Registered accounts</string>
+    <string name="dashboard_offline_footer">100% Offline Secure Local Database</string>
+    <string name="desc_profile">Profile</string>
+    <string name="desc_clients">Members</string>
+    <string name="desc_backup">Backup</string>
+    <string name="desc_status">Status</string>
+    
+    <!-- Client List Screen -->
+    <string name="client_list_title">Members Registry</string>
+    <string name="desc_back">Back</string>
+    <string name="desc_add_client">Add Member</string>
+    <string name="client_list_search_placeholder">Search by name, phone or ID...</string>
+    <string name="desc_search">Search</string>
+    <string name="client_list_no_clients">No members found</string>
+    <string name="client_list_phone_label">Phone: </string>
+    <string name="client_list_id_label">ID: </string>
+    <string name="client_list_client_id_label">Member ID: %1$d</string>
+     <string name="dialog_add_client_title">Register New Member</string>
+    <string name="dialog_add_client_name">Full Name *</string>
+    <string name="dialog_add_client_phone">Phone Number *</string>
+    <string name="dialog_add_client_national_id">National ID</string>
+    <string name="dialog_add_client_address">Address *</string>
+    <string name="dialog_add_client_id">Member ID *</string>
+    <string name="dialog_add_client_error_required">All fields are required.</string>
+    <string name="dialog_add_client_error_invalid_id">Member ID must be a valid integer.</string>
+    <string name="dialog_add_client_error_duplicate_id">Member ID must be unique.</string>
+    <string name="dialog_add_client_error_invalid_phone">Enter a valid phone number (7-15 digits).</string>
+    <string name="dialog_add_client_confirm">Register</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="desc_call">Call</string>
+    
+    <!-- Client Detail Screen -->
+    <string name="client_detail_default_title">Member details</string>
+    <string name="client_detail_loading">Loading member profile...</string>
+    <string name="client_detail_profile_title">Member Profile</string>
+    <string name="client_detail_phone_label">Phone</string>
+    <string name="client_detail_national_id_label">National ID</string>
+    <string name="client_detail_client_id_label">Member ID</string>
+    <string name="client_detail_address_label">Address</string>
+    <string name="client_detail_tab_savings">Savings</string>
+    <string name="client_detail_tab_loans">Loans</string>
+    <string name="dialog_deposit_title">Deposit Savings</string>
+    <string name="dialog_deposit_confirm">Deposit</string>
+    <string name="toast_deposit_success">Deposit successful</string>
+    <string name="dialog_withdraw_title">Withdraw Savings</string>
+    <string name="dialog_withdraw_confirm">Withdraw</string>
+    <string name="toast_withdraw_success">Withdrawal successful</string>
+    <string name="toast_loan_success">Loan disbursed successfully</string>
+    <string name="toast_repayment_success">Repayment registered successfully</string>
+    <string name="client_detail_init_savings">Initializing account data...</string>
+    <string name="client_detail_tx_history_title">Transaction History</string>
+    <string name="client_detail_no_transactions">No transactions logged</string>
+    <string name="client_detail_default_deposit_desc">Cash Deposit</string>
+    <string name="client_detail_default_withdraw_desc">Cash Withdrawal</string>
+    <string name="client_detail_loans_title">Active Loans Portfolio</string>
+    <string name="desc_new_loan">New Loan</string>
+    <string name="client_detail_no_loans">No loan accounts opened</string>
+    <string name="client_detail_disbursed_format">Disbursed: Rs. %,.0f</string>
+    <string name="client_detail_loan_details_format">Interest Rate: %1$.1f%% (Flat) | %2$d Mo</string>
+    <string name="client_detail_loan_date_format">Disbursed Date: %1$s</string>
+    <string name="client_detail_outstanding_balance_label">Outstanding Balance</string>
+    <string name="dialog_repay_confirm">Repay</string>
+    <string name="client_detail_repayment_history_title">Repayment History</string>
+    <string name="dialog_amount_label">Amount (Rs.)</string>
+    <string name="dialog_description_label">Description</string>
+    <string name="dialog_error_invalid_amount">Enter a valid positive amount.</string>
+    <string name="dialog_disburse_title">Disburse New Loan</string>
+    <string name="dialog_disburse_principal">Principal Amount (Rs.)</string>
+    <string name="dialog_disburse_rate">Interest Rate (% Flat Annual)</string>
+    <string name="dialog_disburse_tenure">Tenure (Months)</string>
+    <string name="dialog_disburse_error_principal">Enter a valid principal amount.</string>
+    <string name="dialog_disburse_error_rate">Enter a valid interest rate.</string>
+    <string name="dialog_disburse_error_tenure">Enter a valid tenure in months.</string>
+    <string name="dialog_disburse_confirm">Disburse</string>
+    <string name="dialog_repay_title">Register Loan Repayment</string>
+    <string name="dialog_repay_outstanding">Outstanding Balance: Rs. %,.0f</string>
+    <string name="dialog_repay_amount">Repayment Amount (Rs.)</string>
+    <string name="dialog_repay_error_invalid">Enter a valid positive repayment amount.</string>
+    <string name="dialog_repay_error_exceeds">Repayment amount exceeds outstanding balance.</string>
+    <string name="dialog_repay_pay_confirm">Pay</string>
+
+    <!-- Backup & Restore Screen -->
+    <string name="backup_title">Backup &amp; Restore Data</string>
+    <string name="toast_backup_export_success">Database backup exported successfully!</string>
+    <string name="toast_backup_restore_success">Database restored! Reloading application...</string>
+    <string name="toast_backup_error">Error: %s</string>
+    <string name="desc_warning">Warning</string>
+    <string name="backup_info_title">How Backup Works</string>
+    <string name="backup_info_body">This application is fully offline. Your data is stored locally in an SQLite database. To prevent data loss or to migrate your data to a new device, you should periodically back up your database file. The backup file is a standard SQLite file (.db) which can be restored at any time.</string>
+    <string name="backup_export_title">Export Current Database</string>
+    <string name="backup_export_body">Creates a copy of your database and prompts you to save it. You can save it to your local storage, Google Drive, or send it to another device.</string>
+    <string name="backup_export_button">Export Backup File</string>
+    <string name="backup_import_title">Import / Restore Database</string>
+    <string name="backup_import_body">WARNING: Restoring a database file will completely overwrite all current data. Make sure you select a valid database backup file that was previously exported from this application.</string>
+    <string name="backup_import_button">Restore from Backup File</string>
+    
+    <!-- Added UI Screen Strings -->
+    <string name="desc_menu">Menu</string>
+    <string name="client_detail_account_number_format">Account: %1$s</string>
+    <string name="client_detail_date_format">Date: %1$s</string>
+    <string name="dialog_repay_principal_label">Principal Amount</string>
+    <string name="dialog_repay_interest_label">Interest Amount</string>
+    <string name="dialog_repay_pay_monthly_interest">Pay Monthly Interest</string>
+
+    <string name="title_savings_accounts">Savings Accounts</string>
+    <string name="title_loans_portfolio">Loans Portfolio</string>
+    <string name="title_loan_details">Loan Details</string>
+    <string name="title_select_guarantor">Select Guarantor</string>
+    <string name="search_savings_placeholder">Search by name, ID or phone…</string>
+    <string name="search_loans_placeholder">Search by borrower name or ID…</string>
+    <string name="no_savings_found">No savings accounts found</string>
+    <string name="no_loans_found">No loans recorded</string>
+    <string name="label_member_id_format">Member ID: %1$s</string>
+    <string name="label_unknown_member">Unknown Member</string>
+    <string name="label_no_guarantor">None (No Guarantor)</string>
+    <string name="label_guarantor_optional">Guarantor (Optional)</string>
+    <string name="label_close">Close</string>
+    <string name="label_borrower">Borrower</string>
+    <string name="label_guarantor">Guarantor</string>
+    <string name="label_repayment_summary">Repayment Summary</string>
+    <string name="label_principal_disbursed">Principal Disbursed</string>
+    <string name="label_outstanding_balance">Outstanding Balance</string>
+    <string name="label_repayment_amount">Repayment amount</string>
+    <string name="label_repayment_history">Repayment History</string>
+    <string name="label_no_repayments">No repayments recorded</string>
+    <string name="label_repayment_log_format">Principal: %1$s  |  Interest: %2$s</string>
+    <string name="label_repayment_date_format">Date: %1$s</string>
+    <string name="button_register_repayment">Register Repayment</string>
+    <string name="loan_details_rate_format">Interest Rate: %1$.1f%% (Flat Annual)</string>
+    <string name="loan_details_tenure_format">Tenure: %1$d Months</string>
+    <string name="loan_details_disbursed_on">Disbursed On: %1$s</string>
+    <string name="dashboard_active_loans_title">Active Loans</string>
+    <string name="dashboard_interest_earned_format">Interest Earned: %1$s</string>
+
+    <!-- Dashboard Quick Actions -->
+    <string name="dashboard_quick_actions">Quick Actions</string>
+    <string name="dashboard_add_member">Add Member</string>
+    <string name="dashboard_deposit">Deposit</string>
+    <string name="dashboard_loan_payment">Loan Payment</string>
+    <string name="dashboard_loan_payment_subtitle">Register payment logs for active member loans</string>
+    <string name="desc_active_members">Active Members</string>
+    <string name="desc_add_member">Add Member</string>
+    <string name="desc_deposit">Deposit Savings</string>
+    <string name="desc_loan_payment">Loan Payment</string>
+
+    <!-- Dropdown / Picker Labels -->
+    <string name="label_select_member">Select Member</string>
+    <string name="label_select_active_loan">Select Active Loan</string>
+    <string name="label_member">Member</string>
+    <string name="label_active_loan">Active Loan</string>
+    <string name="label_member_name_id_format">%1$s (ID: %2$d)</string>
+    <string name="label_no_active_loans">No active loans for this member.</string>
+    <string name="label_outstanding_balance_format">Outstanding Balance: Rs. %1$,.0f</string>
+    <string name="label_outstanding_short_format">Outstanding: Rs. %1$,.0f</string>
+    <string name="label_loan_amount_format">Rs. %1$,.0f</string>
+
+    <!-- Client Picker Search -->
+    <string name="picker_search_placeholder">Search by name or ID…</string>
+
+    <!-- Select Guarantor -->
+    <string name="label_select_guarantor">Select Guarantor</string>
+    <string name="label_loan_with_balance_format">Rs. %1$,.0f (Bal: Rs. %2$,.0f)</string>
+    <string name="label_amount_format">Rs. %1$,.0f</string>
+    <string name="loan_details_maturity_date">Maturity Date: %1$s</string>
+    <string name="loan_details_outstanding_as_of_today">Balance as of today</string>
+    <string name="loan_details_principal_remaining">Principal Remaining</string>
+    <string name="label_maturity_date">Maturity Date</string>
+    <string name="label_balance_as_of_today">Balance (as of today)</string>
+</resources>
