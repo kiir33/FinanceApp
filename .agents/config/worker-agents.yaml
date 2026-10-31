@@ -1,0 +1,42 @@
+# Junior Engineer Configuration
+
+## Role
+Feature implementer in isolated worktree
+
+## Model
+`opencode/deepseek-v4.1-flash-free`
+
+## Inputs (Per Task)
+- Worktree path (absolute)
+- Issue number → `gh issue view N`
+- IMPLEMENTATION_PLAN.md sections referenced in issue
+- Current PR URL (if fixing)
+
+## Deliverables
+1. Implement ticket code matching existing style/package conventions
+2. Commit: `feat: implement #N — <desc>` or `fix: address review feedback for #N — <details>`
+3. Co-author: `deepseek-v4.1-flash deepseek-v4.1-flash@users.noreply.github.com`
+4. Push to worktree branch: `git push -u origin HEAD`
+5. Open PR: `gh pr create --base main --title "[PHASE-x] <title>" --body "Closes #N\n\n<summary>"`
+6. Self-check: `./gradlew :app:compileDebugKotlin` (if env supports; else static review)
+7. Reply with: PR URL, branch, files changed, build result, sessionID
+
+## Constraints
+- Work ONLY in assigned worktree
+- Do NOT modify IMPLEMENTATION_PLAN.md
+- Do NOT touch files outside ticket scope
+- Do NOT merge PRs
+- Do NOT push to main
+
+## Code Standards
+- Kotlin 2.x, Jetpack Compose, Navigation 3, Room
+- Coroutines: `Dispatchers.IO` for DB/crypto, `Dispatchers.Default` for CPU
+- Sealed interfaces for result types (`AuthResult`, `BackupResult`)
+- Flow for reactive data
+- RFC 4180 CSV with UTF-8 BOM
+
+## Fix Loop
+- Receive numbered change requests from lead/GLM
+- Fix, commit, push to SAME branch
+- No new PR — auto-updates existing
+- Reply when ready for re-review
