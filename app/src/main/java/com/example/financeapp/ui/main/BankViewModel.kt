@@ -22,13 +22,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 class BankViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -170,13 +168,21 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun withdrawSavings(accountId: Long, amount: Double, description: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+    fun withdrawSavings(
+        accountId: Long,
+        amount: Double,
+        description: String,
+        transactionDate: Long = System.currentTimeMillis(),
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
         viewModelScope.launch {
             val success = repository.performWithdrawal(
                 accountId = accountId,
                 amount = amount,
                 description = description,
-                recordedByUserId = currentUserId
+                recordedByUserId = currentUserId,
+                transactionDate = transactionDate
             )
             if (success) onSuccess() else onError("Insufficient member balance or treasury cash balance.")
         }
@@ -213,34 +219,8 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            // Savings Cap Check (80% of Borrower + Guarantor savings combined)
-            val borrowerSavingsAcc = repository.getSavingsAccountForClient(clientId).first()
-            val borrowerSavings = borrowerSavingsAcc?.balance ?: 0.0
-
-            var guarantorSavings = 0.0
-            if (guarantorId != null) {
-                val guarantorSavingsAcc = repository.getSavingsAccountForClient(guarantorId).first()
-                guarantorSavings = guarantorSavingsAcc?.balance ?: 0.0
-            }
-
-            val combinedSavings = borrowerSavings + guarantorSavings
-            val maxLoanAmount = combinedSavings * 0.8
-
-            if (amount > maxLoanAmount) {
-                if (guarantorId != null) {
-                    onError("Loan amount exceeds 80% of combined savings of borrower and guarantor (Limit: Rs. ${String.format(Locale.US, "%.0f", maxLoanAmount)}).")
-                } else {
-                    onError("Loan amount exceeds 80% of borrower savings (Limit: Rs. ${String.format(Locale.US, "%.0f", maxLoanAmount)}).")
-                }
-                return@launch
-            }
-
-            // Check treasury balance
-            val groupAccount = db.groupAccountDao().getGroupAccountById().first()
-            if (groupAccount == null || groupAccount.cashBalance < amount) {
-                onError("Insufficient treasury cash balance for loan disbursement.")
-                return@launch
-            }
+            // The 80% savings cap and treasury balance are validated atomically inside
+            // BankRepository.disburseLoan() so concurrent disbursements cannot bypass them.
 
             // outstandingBalance tracks principal remaining only.
             // Interest is accrued daily and computed at display time based on today's date.
@@ -256,7 +236,7 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
                 ),
                 recordedByUserId = currentUserId
             )
-            if (success) onSuccess() else onError("Failed to disburse loan - insufficient treasury funds.")
+            if (success) onSuccess() else onError("Failed to disburse loan - savings limit or treasury funds insufficient.")
         }
     }
 
