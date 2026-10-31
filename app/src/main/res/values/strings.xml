@@ -180,6 +180,43 @@
     <string name="label_balance_as_of_today">Balance (as of today)</string>
 
 <<<<<<< HEAD
+    <!-- CSV Import Screen -->
+    <string name="csv_import_title">CSV Bulk Import</string>
+    <string name="csv_import_select_template">Select Import Template</string>
+    <string name="csv_import_select_template_desc">Choose the type of data you want to import</string>
+    <string name="csv_import_step_files">Step 2: Select CSV Files</string>
+    <string name="csv_import_members_file">Members CSV (Required)</string>
+    <string name="csv_import_members_file_desc">Member_ID,Full_Name,Phone_Number,Address</string>
+    <string name="csv_import_savings_file">Savings CSV (Optional)</string>
+    <string name="csv_import_savings_file_desc">Member_ID,Account_Number,Opening_Balance</string>
+    <string name="csv_import_loans_file">Loans CSV (Optional)</string>
+    <string name="csv_import_loans_file_desc">Member_ID,Guarantor_Member_ID,Disbursed_Amount,Interest_Rate,Tenure_Months,Disbursement_Date,Current_Outstanding</string>
+    <string name="csv_import_download_template">Download Template</string>
+    <string name="csv_import_pick_file">Pick File</string>
+    <string name="csv_import_validate_button">Validate & Preview</string>
+    <string name="csv_import_validation_errors">Validation Errors</string>
+    <string name="csv_import_error_count">%1$d error(s) found</string>
+    <string name="csv_import_error_row">Row %1$d</string>
+    <string name="csv_import_preview_title">Import Preview</string>
+    <string name="csv_import_preview_desc">Review the import summary before confirming</string>
+    <string name="csv_import_members_count">Members</string>
+    <string name="csv_import_total_savings">Total Savings</string>
+    <string name="csv_import_total_loans">Total Loans</string>
+    <string name="csv_import_generated_usernames">Generated Usernames</string>
+    <string name="csv_import_username_format">Member %1$d → %2$s</string>
+    <string name="csv_import_back">Back</string>
+    <string name="csv_import_confirm_button">Confirm Import</string>
+    <string name="csv_import_back_to_files">Back to Files</string>
+    <string name="csv_import_success_title">Import Successful!</string>
+    <string name="csv_import_credentials_sheet">Member Credentials Sheet</string>
+    <string name="csv_import_credentials_desc">Download the credentials sheet to distribute login details to members</string>
+    <string name="csv_import_download_credentials">Download Credentials Sheet</string>
+    <string name="csv_import_done">Done</string>
+    <string name="csv_import_template_downloaded">%1$s template downloaded</string>
+    <string name="csv_import_credentials_saved">Credentials sheet saved successfully</string>
+    <string name="csv_import_error_members_required">Members CSV file is required</string>
+=======
+<<<<<<< HEAD
     <!-- Reports Dashboard Screen -->
     <string name="reports_dashboard_title">Financial Reports</string>
     <string name="reports_dashboard_subtitle">Export CSV reports for AGM, audit, and analysis</string>
@@ -371,5 +408,6 @@
     <string name="group_tx_type_expense">Expense</string>
     <string name="group_tx_type_bank_deposit">Cash → Bank Transfer</string>
     <string name="group_tx_type_bank_withdrawal">Bank → Cash Transfer</string>
+>>>>>>> origin/main
 >>>>>>> origin/main
 </resources>
