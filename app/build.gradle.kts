@@ -90,4 +90,12 @@ dependencies {
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.room.ktx)
   ksp(libs.androidx.room.compiler)
+
+  // Biometrics for quick app unlock
+  implementation(libs.androidx.biometric)
+
+  // Google Drive integration
+  implementation(libs.play.services.auth)
+  implementation(libs.google.api.client.android)
+  implementation(libs.google.api.services.drive)
 }
