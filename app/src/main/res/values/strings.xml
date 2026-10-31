@@ -227,4 +227,51 @@
     <string name="admin_setup_error_password_mismatch">Passwords do not match</string>
     <string name="admin_setup_error_user_exists">An admin account already exists</string>
     <string name="admin_setup_error_unknown">An unknown error occurred. Please try again.</string>
+
+    <!-- Member Dashboard Screen -->
+    <string name="member_dashboard_title">My Account</string>
+    <string name="member_dashboard_welcome">Welcome, %1$s</string>
+    <string name="member_dashboard_member_code">Member Code: %1$d</string>
+    <string name="member_dashboard_savings_account">Savings Account</string>
+    <string name="member_dashboard_balance_format">Rs. %1$s</string>
+    <string name="member_dashboard_recent_transactions">Recent Transactions</string>
+    <string name="member_dashboard_no_transactions">No transactions yet</string>
+    <string name="member_dashboard_deposit">Deposit</string>
+    <string name="member_dashboard_withdrawal">Withdrawal</string>
+    <string name="member_dashboard_tx_separator">—</string>
+    <string name="member_dashboard_amount_format">%1$s Rs. %2$s</string>
+    <string name="member_dashboard_active_loan">Active Loan</string>
+    <string name="member_dashboard_loan_principal">Principal: Rs. %1$s</string>
+    <string name="member_dashboard_outstanding_format">Outstanding: Rs. %1$s</string>
+    <string name="member_dashboard_interest_rate">Interest Rate</string>
+    <string name="member_dashboard_interest_rate_format">%1$.1f%% (Flat Annual)</string>
+    <string name="member_dashboard_tenure">Tenure</string>
+    <string name="member_dashboard_tenure_format">%1$d Months</string>
+    <string name="member_dashboard_disbursed_date">Disbursed Date</string>
+    <string name="member_dashboard_maturity_date">Maturity Date</string>
+    <string name="member_dashboard_accrued_interest">Accrued Interest</string>
+    <string name="member_dashboard_guarantor">Guarantor</string>
+    <string name="member_dashboard_guarantor_format">%1$s (%2$s)</string>
+    <string name="member_dashboard_no_active_loan">No active loan at this time</string>
+    <string name="member_dashboard_no_loans">No loan accounts opened</string>
+    <string name="member_dashboard_loading">Loading your account...</string>
+    <string name="member_dashboard_no_session">No active session</string>
+    <string name="member_dashboard_change_password">Change Password</string>
+
+    <!-- Change Password Dialog -->
+    <string name="change_password_title">Change Password</string>
+    <string name="change_password_old_label">Current Password</string>
+    <string name="change_password_new_label">New Password</string>
+    <string name="change_password_confirm_label">Confirm New Password</string>
+    <string name="change_password_show">Show</string>
+    <string name="change_password_hide">Hide</string>
+    <string name="change_password_confirm_button">Update Password</string>
+    <string name="change_password_error_old_invalid">Current password is incorrect</string>
+    <string name="change_password_error_new_required">New password is required</string>
+    <string name="change_password_error_length">Password must be at least 8 characters</string>
+    <string name="change_password_error_letter">Password must contain at least one letter</string>
+    <string name="change_password_error_digit">Password must contain at least one number</string>
+    <string name="change_password_error_mismatch">Passwords do not match</string>
+    <string name="change_password_error_same">New password cannot be the same as current password</string>
+    <string name="change_password_error_unknown">Failed to change password. Please try again.</string>
 </resources>
