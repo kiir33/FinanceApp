@@ -11,7 +11,8 @@ import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
-import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 
@@ -75,7 +76,7 @@ class CsvImporter(
     private val db: com.example.financeapp.database.AppDatabase
 ) {
 
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
     // --- Public API ---
 
@@ -272,7 +273,15 @@ class CsvImporter(
                 }
 
                 // Generate credentials sheet CSV
-                val credentialsSheet = generateCredentialsSheet(credentialsRows)
+                // Audit log for CSV import
+                db.auditLogDao().insertAuditLog(AuditLog(
+                    userId = 1, // TODO: get actual admin user ID from context
+                    username = "admin",
+                    action = "CSV_IMPORT",
+                    details = "Bulk import: \${memberResult.rows.size} members, \${savingsRows.size} savings, \${loanRows.size} loans"
+                ))
+
+        val credentialsSheet = generateCredentialsSheet(credentialsRows)
 
                 ImportResult(
                     success = true,
@@ -509,8 +518,8 @@ class CsvImporter(
                 // Disbursement_Date_YYYY_MM_DD
                 var disbursementDate: Long = System.currentTimeMillis()
                 try {
-                    val date = dateFormat.parse(cols[5].trim())
-                    if (date != null) disbursementDate = date.time
+                    val date = LocalDate.parse(cols[5].trim(), dateFormatter)
+                    disbursementDate = date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
                 } catch (e: Exception) {
                     errors.add(ValidationError(lineNumber, "Disbursement_Date_YYYY_MM_DD", "Invalid date format (use YYYY-MM-DD)"))
                 }
@@ -542,6 +551,45 @@ class CsvImporter(
     private fun crossValidate(members: List<MemberRow>, savings: List<SavingsRow>, loans: List<LoanRow>): List<ValidationError> {
         val errors = mutableListOf<ValidationError>()
         val memberIds = members.map { it.memberId }.toSet()
+
+        // Check guarantor references in loans
+        for (loan in loans) {
+            if (loan.guarantorMemberId != null && loan.guarantorMemberId !in memberIds) {
+                errors.add(ValidationError(-1, "Guarantor_Member_ID", "Loan references unknown guarantor member ID \${loan.guarantorMemberId}"))
+            }
+        }
+
+        // Check savings member IDs
+        for (saving in savings) {
+            if (saving.memberId !in memberIds) {
+                errors.add(ValidationError(-1, "Member_ID", "Savings references unknown member ID \${saving.memberId}"))
+            }
+        }
+
+        // Cross-validation: Guarantor can only guarantee 1 active loan
+        val guarantorCounts = mutableMapOf<Int, Int>()
+        for (loan in loans) {
+            if (loan.guarantorMemberId != null) {
+                val count = guarantorCounts.getOrDefault(loan.guarantorMemberId!!, 0) + 1
+                guarantorCounts[loan.guarantorMemberId!!] = count
+                if (count > 1) {
+                    errors.add(ValidationError(-1, "Guarantor_Member_ID", "Guarantor member ID \${loan.guarantorMemberId} cannot guarantee more than 1 loan in this import"))
+                }
+            }
+        }
+
+        // Cross-validation: Borrower cannot have active loan in this import
+        val borrowerCounts = mutableMapOf<Int, Int>()
+        for (loan in loans) {
+            val count = borrowerCounts.getOrDefault(loan.memberId, 0) + 1
+            borrowerCounts[loan.memberId] = count
+            if (count > 1) {
+                errors.add(ValidationError(-1, "Member_ID", "Borrower member ID \${loan.memberId} has multiple active loans in this import"))
+            }
+        }
+
+        return errors
+    }.toSet()
 
         // Check guarantor references in loans
         for (loan in loans) {
