@@ -45,10 +45,10 @@ interface LoanDao {
     @Query("SELECT SUM(outstandingBalance) FROM loans WHERE status = 'ACTIVE'")
     fun getTotalOutstandingLoans(): Flow<Double?>
 
+    // Core member-only operations (no treasury sync)
     @Transaction
-    suspend fun repayLoan(loanId: Long, amount: Double, principalPaid: Double, interestPaid: Double, timestamp: Long = System.currentTimeMillis()): Boolean {
+    suspend fun repayLoanMemberOnly(loanId: Long, amount: Double, principalPaid: Double, interestPaid: Double, timestamp: Long = System.currentTimeMillis()): Boolean {
         val loan = getLoanById(loanId) ?: return false
-        // outstandingBalance tracks principal remaining only; deduct principalPaid
         val newPrincipalOutstanding = loan.outstandingBalance - principalPaid
         val status = if (newPrincipalOutstanding <= 0.0) "PAID_OFF" else "ACTIVE"
         val updatedLoan = loan.copy(

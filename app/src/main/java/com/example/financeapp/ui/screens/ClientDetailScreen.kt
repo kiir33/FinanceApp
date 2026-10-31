@@ -202,11 +202,12 @@ fun ClientDetailScreen(
             title = stringResource(R.string.dialog_withdraw_title),
             confirmLabel = stringResource(R.string.dialog_withdraw_confirm),
             onDismiss = { showWithdrawDialog = false },
-            onConfirm = { amount, desc, _ ->
+            onConfirm = { amount, desc, date ->
                 viewModel.withdrawSavings(
                     accountId = savingsAccount!!.id,
                     amount = amount,
                     description = desc,
+                    transactionDate = date,
                     onContextSuccess = {
                         showWithdrawDialog = false
                         Toast.makeText(context, context.getString(R.string.toast_withdraw_success), Toast.LENGTH_SHORT).show()
@@ -253,10 +254,18 @@ private fun BankViewModel.withdrawSavings(
     accountId: Long,
     amount: Double,
     description: String,
+    transactionDate: Long,
     onContextSuccess: () -> Unit,
     onContextError: (String) -> Unit
 ) {
-    withdrawSavings(accountId, amount, description, onContextSuccess, onContextError)
+    withdrawSavings(
+        accountId = accountId,
+        amount = amount,
+        description = description,
+        transactionDate = transactionDate,
+        onSuccess = onContextSuccess,
+        onError = onContextError
+    )
 }
 
 @Composable

@@ -36,8 +36,9 @@ interface SavingsDao {
     @Query("SELECT SUM(balance) FROM savings_accounts")
     fun getTotalSavings(): Flow<Double?>
 
+    // Core member-only operations (no treasury sync)
     @Transaction
-    suspend fun performDeposit(accountId: Long, amount: Double, description: String, transactionDate: Long = System.currentTimeMillis()) {
+    suspend fun performDepositMemberOnly(accountId: Long, amount: Double, description: String, transactionDate: Long = System.currentTimeMillis()) {
         val account = getAccountById(accountId) ?: return
         val newBalance = account.balance + amount
         updateAccount(account.copy(balance = newBalance))
@@ -45,7 +46,7 @@ interface SavingsDao {
     }
 
     @Transaction
-    suspend fun performWithdrawal(accountId: Long, amount: Double, description: String): Boolean {
+    suspend fun performWithdrawalMemberOnly(accountId: Long, amount: Double, description: String): Boolean {
         val account = getAccountById(accountId) ?: return false
         if (account.balance < amount) return false
         val newBalance = account.balance - amount

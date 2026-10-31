@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.financeapp.auth.SessionManager
 import com.example.financeapp.backup.BackupManager
 import com.example.financeapp.data.BankRepository
 import com.example.financeapp.database.AppDatabase
@@ -21,13 +22,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 class BankViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -82,7 +81,7 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
 
     // Selected client detail state
     val selectedClientId = MutableStateFlow<Long?>(null)
-    
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val selectedClient: StateFlow<Client?> = selectedClientId
         .flatMapLatest { id ->
@@ -138,6 +137,9 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
     private val _backupRestoreEvent = MutableSharedFlow<BackupRestoreResult>()
     val backupRestoreEvent: SharedFlow<BackupRestoreResult> = _backupRestoreEvent.asSharedFlow()
 
+    private val currentUserId: Long
+        get() = SessionManager.currentSession.value?.userId ?: 1L // fallback for initial admin
+
     fun createClient(name: String, phoneNumber: String, address: String, clientId: Int) {
         viewModelScope.launch {
             val generatedId = repository.insertClient(
@@ -150,16 +152,39 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun depositSavings(accountId: Long, amount: Double, description: String, transactionDate: Long = System.currentTimeMillis()) {
+    fun depositSavings(accountId: Long, amount: Double, description: String, transactionDate: Long = System.currentTimeMillis(), channel: String = "CASH") {
         viewModelScope.launch {
-            repository.performDeposit(accountId, amount, description, transactionDate)
+            val success = repository.performDeposit(
+                accountId = accountId,
+                amount = amount,
+                description = description,
+                transactionDate = transactionDate,
+                recordedByUserId = currentUserId,
+                channel = channel
+            )
+            if (!success) {
+                // Handle error - could emit to a UI event flow
+            }
         }
     }
 
-    fun withdrawSavings(accountId: Long, amount: Double, description: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+    fun withdrawSavings(
+        accountId: Long,
+        amount: Double,
+        description: String,
+        transactionDate: Long = System.currentTimeMillis(),
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
         viewModelScope.launch {
-            val success = repository.performWithdrawal(accountId, amount, description)
-            if (success) onSuccess() else onError("Insufficient balance.")
+            val success = repository.performWithdrawal(
+                accountId = accountId,
+                amount = amount,
+                description = description,
+                recordedByUserId = currentUserId,
+                transactionDate = transactionDate
+            )
+            if (success) onSuccess() else onError("Insufficient member balance or treasury cash balance.")
         }
     }
 
@@ -192,34 +217,14 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
                     onError("Selected guarantor is already guaranteeing another active loan.")
                     return@launch
                 }
-                // Rule 3: A member in guarantee cannot take loan (guarantor cannot borrow, but wait, does a borrower have borrowing restriction? Yes, but guarantor cannot have active loans guaranteed either).
             }
 
-            // Savings Cap Check (80% of Borrower + Guarantor savings combined)
-            val borrowerSavingsAcc = repository.getSavingsAccountForClient(clientId).first()
-            val borrowerSavings = borrowerSavingsAcc?.balance ?: 0.0
-
-            var guarantorSavings = 0.0
-            if (guarantorId != null) {
-                val guarantorSavingsAcc = repository.getSavingsAccountForClient(guarantorId).first()
-                guarantorSavings = guarantorSavingsAcc?.balance ?: 0.0
-            }
-
-            val combinedSavings = borrowerSavings + guarantorSavings
-            val maxLoanAmount = combinedSavings * 0.8
-
-            if (amount > maxLoanAmount) {
-                if (guarantorId != null) {
-                    onError("Loan amount exceeds 80% of combined savings of borrower and guarantor (Limit: Rs. ${String.format(Locale.US, "%.0f", maxLoanAmount)}).")
-                } else {
-                    onError("Loan amount exceeds 80% of borrower savings (Limit: Rs. ${String.format(Locale.US, "%.0f", maxLoanAmount)}).")
-                }
-                return@launch
-            }
+            // The 80% savings cap and treasury balance are validated atomically inside
+            // BankRepository.disburseLoan() so concurrent disbursements cannot bypass them.
 
             // outstandingBalance tracks principal remaining only.
             // Interest is accrued daily and computed at display time based on today's date.
-            repository.disburseLoan(
+            val success = repository.disburseLoan(
                 Loan(
                     clientId = clientId,
                     guarantorId = guarantorId,
@@ -228,9 +233,10 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
                     tenureMonths = tenureMonths,
                     outstandingBalance = amount,
                     loanDate = loanDate
-                )
+                ),
+                recordedByUserId = currentUserId
             )
-            onSuccess()
+            if (success) onSuccess() else onError("Failed to disburse loan - savings limit or treasury funds insufficient.")
         }
     }
 
@@ -254,8 +260,44 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             val totalPayment = principalAmount + interestAmount
-            val success = repository.repayLoan(loanId, totalPayment, principalAmount, interestAmount, repaymentDate)
+            val success = repository.repayLoan(
+                loanId = loanId,
+                amount = totalPayment,
+                principalPaid = principalAmount,
+                interestPaid = interestAmount,
+                timestamp = repaymentDate,
+                recordedByUserId = currentUserId
+            )
             if (success) onSuccess() else onError("Failed to register repayment.")
+        }
+    }
+
+    // Treasury operations
+    fun transferCashToBank(amount: Double, description: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            val success = repository.transferCashToBank(amount, description, currentUserId)
+            if (success) onSuccess() else onError("Insufficient cash balance.")
+        }
+    }
+
+    fun transferBankToCash(amount: Double, description: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            val success = repository.transferBankToCash(amount, description, currentUserId)
+            if (success) onSuccess() else onError("Insufficient bank balance.")
+        }
+    }
+
+    fun recordExpense(amount: Double, description: String, channel: String = "CASH", onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            val success = repository.recordExpense(amount, description, currentUserId, channel)
+            if (success) onSuccess() else onError("Insufficient ${channel.toLowerCase()} balance.")
+        }
+    }
+
+    fun recordInterestIncome(amount: Double, description: String, channel: String = "BANK", onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            val success = repository.recordInterestIncome(amount, description, currentUserId, channel)
+            if (success) onSuccess() else onError("Failed to record interest income.")
         }
     }
 
