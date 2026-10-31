@@ -339,6 +339,10 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
     fun getLoanRepayments(loanId: Long): Flow<List<LoanRepayment>> {
         return repository.getLoanRepayments(loanId)
     }
+
+    fun getGuarantorForLoan(guarantorId: Long?): Client? {
+        return if (guarantorId != null) repository.getClientById(guarantorId) else null
+    }
 }
 
 data class SavingsWithClient(
