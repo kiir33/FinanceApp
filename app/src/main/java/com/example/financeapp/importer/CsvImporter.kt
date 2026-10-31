@@ -280,7 +280,7 @@ class CsvImporter(
                     userId = 1, // TODO: get actual admin user ID from context
                     username = "admin",
                     action = "CSV_IMPORT",
-                    details = "Bulk import: ${memberResult.rows.size} members, ${savingsRows.size} savings, ${loanRows.size} loans"
+                    details = """Bulk import: ${memberResult.rows.size} members, ${savingsRows.size} savings, ${loanRows.size} loans"""
                 ))
 
                 ImportResult(
