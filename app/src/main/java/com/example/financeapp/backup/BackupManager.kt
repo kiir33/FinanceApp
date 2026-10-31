@@ -50,7 +50,7 @@ class BackupManager(private val context: Context) {
      * Exports entire database to encrypted .apex file via SAF.
      * Returns BackupResult.
      */
-    suspend fun exportDatabase(db: AppDatabase, destUri: Uri): BackupResult {
+    suspend fun exportDatabase(db: AppDatabase, destUri: Uri, userId: Long, username: String): BackupResult {
         return withContext(Dispatchers.IO) {
             try {
                 // 1. Dump all tables to JSON
@@ -64,6 +64,14 @@ class BackupManager(private val context: Context) {
                 context.contentResolver.openOutputStream(destUri)?.use { outputStream ->
                     BackupCryptoEngine.encryptPayload(jsonString, passphrase, outputStream)
                 } ?: return@withContext BackupResult.Failure("Failed to open output stream")
+
+                // Audit log for backup
+                db.auditLogDao().insertAuditLog(AuditLog(
+                    userId = userId,
+                    username = username,
+                    action = "CSV_EXPORT",
+                    details = "Full database backup exported to .apex format"
+                ))
 
                 BackupResult.Success
             } catch (e: Exception) {
@@ -222,6 +230,8 @@ class BackupManager(private val context: Context) {
         db: AppDatabase,
         sourceUri: Uri,
         passphrase: CharArray,
+        userId: Long,
+        username: String,
         onDbReopened: () -> Unit
     ): BackupResult {
         return withContext(Dispatchers.IO) {
@@ -269,6 +279,14 @@ class BackupManager(private val context: Context) {
                 if (!integrityResult.isValid) {
                     return@withContext BackupResult.Failure("Integrity check failed: ${integrityResult.errors.joinToString(", ")}")
                 }
+
+                // Audit log for restore
+                db.auditLogDao().insertAuditLog(AuditLog(
+                    userId = userId,
+                    username = username,
+                    action = "DATABASE_RESTORE",
+                    details = "Full database restored from .apex backup"
+                ))
 
                 BackupResult.Success
             } catch (e: IllegalArgumentException) {
