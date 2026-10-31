@@ -8,6 +8,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.example.financeapp.ui.main.BankViewModel
+import com.example.financeapp.ui.screens.AdminSetupScreen
 import com.example.financeapp.ui.screens.BackupRestoreScreen
 import com.example.financeapp.ui.screens.ClientDetailScreen
 import com.example.financeapp.ui.screens.ClientListScreen
@@ -82,6 +83,12 @@ fun MainNavigation() {
         entry<Login> {
           LoginScreen(
             onLoginSuccess = { /* Navigation handled by #7 */ },
+            modifier = Modifier.safeDrawingPadding()
+          )
+        }
+        entry<AdminSetup> {
+          AdminSetupScreen(
+            onSetupComplete = { backStack.clearAndAdd(Dashboard) },
             modifier = Modifier.safeDrawingPadding()
           )
         }
