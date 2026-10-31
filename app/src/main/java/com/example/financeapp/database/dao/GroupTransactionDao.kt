@@ -29,4 +29,7 @@ interface GroupTransactionDao {
 
     @Query("SELECT * FROM group_transactions WHERE type = :type ORDER BY transactionDate DESC")
     fun getTransactionsByType(type: String): Flow<List<GroupTransaction>>
+
+    @Query("SELECT * FROM group_transactions ORDER BY transactionDate DESC LIMIT :limit")
+    fun getRecentTransactions(limit: Int): Flow<List<GroupTransaction>>
 }
