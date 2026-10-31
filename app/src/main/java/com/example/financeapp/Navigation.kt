@@ -12,6 +12,7 @@ import com.example.financeapp.ui.screens.BackupRestoreScreen
 import com.example.financeapp.ui.screens.ClientDetailScreen
 import com.example.financeapp.ui.screens.ClientListScreen
 import com.example.financeapp.ui.screens.DashboardScreen
+import com.example.financeapp.ui.screens.LoginScreen
 
 @Composable
 fun MainNavigation() {
@@ -75,6 +76,12 @@ fun MainNavigation() {
             loanId = key.loanId,
             onBack = { backStack.removeLastOrNull() },
             viewModel = viewModel,
+            modifier = Modifier.safeDrawingPadding()
+          )
+        }
+        entry<Login> {
+          LoginScreen(
+            onLoginSuccess = { /* Navigation handled by #7 */ },
             modifier = Modifier.safeDrawingPadding()
           )
         }
