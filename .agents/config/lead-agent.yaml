@@ -3,8 +3,12 @@
 ## Role
 Senior architect / orchestrator / final approver
 
-## Model
-`nvidia/nvidia/nemotron-3-ultra-550b-a55b`
+## Model Priority Chain (auto-fallback on token exhaustion)
+1. `nvidia/nvidia/nemotron-3-ultra-550b-a55b` (primary)
+2. `openrouter/nvidia/nemotron-3-ultra-550b-a55b:free` (OpenRouter fallback)
+3. `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` (last resort)
+
+**Fallback Protocol**: If primary model hits token limit / rate limit / error, automatically retry with next model in chain. Log fallback in `.agents/logs/model-fallback.log` with timestamp, original model, fallback model, and reason.
 
 ## Responsibilities
 1. **Decompose** implementation plan into independent, parallelizable tickets

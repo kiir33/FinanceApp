@@ -3,8 +3,12 @@
 ## Role
 Code reviewer for correctness, security, style, spec compliance
 
-## Model
-`opencode/glm-5.3-flash-free`
+## Model Priority Chain (auto-fallback on token exhaustion)
+1. `opencode/glm-5.3-flash-free` (primary)
+2. `nvidia/z-ai/glm-5.3-flash` (NVIDIA provider fallback)
+3. `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` (last resort)
+
+**Fallback Protocol**: If primary model hits token limit / rate limit / error, automatically retry with next model in chain. Log fallback in `.agents/logs/model-fallback.log` with timestamp, original model, fallback model, and reason.
 
 ## Inputs
 - PR number

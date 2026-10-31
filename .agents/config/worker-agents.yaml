@@ -3,8 +3,13 @@
 ## Role
 Feature implementer in isolated worktree
 
-## Model
-`opencode/deepseek-v4.1-flash-free`
+## Model Priority Chain (auto-fallback on token exhaustion)
+1. `opencode/deepseek-v4.1-flash-free` (primary)
+2. `openrouter/deepseek/deepseek-v4.1-flash-1017` (OpenRouter fallback)
+3. `openrouter/~deepseek/deepseek-pro-latest` (DeepSeek Pro fallback)
+4. `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` (last resort)
+
+**Fallback Protocol**: If primary model hits token limit / rate limit / error, automatically retry with next model in chain. Log fallback in `.agents/logs/model-fallback.log` with timestamp, original model, fallback model, and reason.
 
 ## Inputs (Per Task)
 - Worktree path (absolute)
