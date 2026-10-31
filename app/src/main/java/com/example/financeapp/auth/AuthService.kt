@@ -151,6 +151,7 @@ class AuthService private constructor(
             }
 
             // Check if new password is same as old
+            // Using existing salt to detect identical password (same salt -> same hash)
             val newPasswordHash = PasswordHasher.hashPassword(newPassword, user.salt)
             if (newPasswordHash == user.passwordHash) {
                 return@withContext AuthResult.PasswordChangeFailure.SameAsOldPassword
@@ -288,6 +289,8 @@ class AuthService private constructor(
         return null
     }
 
+    // Heuristic: <=10 digits = member ID, >10 digits = phone number, else username
+    // Note: This may misclassify very long member IDs or short phone numbers
     private fun identifyLoginType(loginId: String): String {
         return if (loginId.all { it.isDigit() }) {
             if (loginId.length <= 10) "member ID" else "phone number"

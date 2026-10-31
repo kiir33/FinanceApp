@@ -89,7 +89,7 @@ abstract class AppDatabase : RoomDatabase() {
                 """.trimIndent())
                 db.execSQL("""
                     INSERT OR IGNORE INTO \`group_accounts\` (\`id\`, \`name\`, \`cashBalance\`, \`bankBalance\`, \`bankName\`, \`bankAccountNumber\`, \`lastUpdated\`)
-                    VALUES (1, 'Main Group Treasury', 0.0, 0.0, '', '', ${System.currentTimeMillis()})
+                    VALUES (1, 'Main Group Treasury', 0.0, 0.0, '', '', strftime('%s','now')*1000)
                 """.trimIndent())
 
                 // 3. Create group_transactions table
