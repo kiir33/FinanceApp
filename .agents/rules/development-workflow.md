@@ -108,6 +108,30 @@ When ANY model in the pipeline hits token limit / rate limit / 429 / 503 / conte
 - If ALL models in chain fail → escalate to human with full log context
 - Global settings (log path, triggers, co-author domain) in `models.yaml` → `global`
 
+## Worktree Lifecycle Management
+
+### Cleanup Rule (MANDATORY)
+**After every wave merge**: Remove worktrees for tickets whose PRs have been merged to `main`.
+
+```bash
+# List worktrees
+ls /home/kiran/.local/share/opencode/worktree/d1255e/
+
+# For each merged ticket worktree:
+cd /home/kiran/.local/share/opencode/worktree/d1255e && rm -rf issue-{N}-{slug}
+```
+
+**When to run**: After verifying all PRs in a wave are merged (check `gh pr list --state merged`).
+**Why**: Prevents disk bloat, avoids confusion with stale branches, keeps worktree list clean.
+
+### Automated Check (optional)
+Add to lead's wave completion checklist:
+- [ ] All wave PRs merged
+- [ ] Stale worktrees removed
+- [ ] Active worktrees match unmerged tickets only
+
+---
+
 ## Agent Documentation Structure
 ```
 .agents/
