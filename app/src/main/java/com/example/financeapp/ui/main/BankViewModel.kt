@@ -13,6 +13,7 @@ import com.example.financeapp.database.entities.Loan
 import com.example.financeapp.database.entities.LoanRepayment
 import com.example.financeapp.database.entities.SavingsAccount
 import com.example.financeapp.database.entities.SavingsTransaction
+import com.example.financeapp.database.entities.User
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -39,6 +40,7 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
     val totalSavings: StateFlow<Double> = repository.totalSavings.map { it ?: 0.0 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
     val totalOutstandingLoans: StateFlow<Double> = repository.totalOutstandingLoans.map { it ?: 0.0 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
     val allClients: StateFlow<List<Client>> = repository.allClients.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val allUsers: StateFlow<List<User>> = repository.allUsers.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val allSavingsWithClients: StateFlow<List<SavingsWithClient>> = combine(
         repository.getAllSavingsAccounts(),

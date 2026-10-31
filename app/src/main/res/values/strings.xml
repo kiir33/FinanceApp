@@ -178,4 +178,39 @@
     <string name="loan_details_principal_remaining">Principal Remaining</string>
     <string name="label_maturity_date">Maturity Date</string>
     <string name="label_balance_as_of_today">Balance (as of today)</string>
+
+    <!-- User Management Screen -->
+    <string name="user_management_title">User Management</string>
+    <string name="user_management_add_user">Add User</string>
+    <string name="user_management_no_users">No users found</string>
+    <string name="user_management_role_format">%1$s</string>
+    <string name="user_management_client_format">%1$s (ID: %2$d)</string>
+    <string name="user_management_locked">Locked</string>
+    <string name="user_management_inactive">Inactive</string>
+    <string name="user_management_last_login">Last login: %1$s</string>
+    <string name="user_management_reset_password">Reset Password</string>
+    <string name="user_management_deactivate">Deactivate</string>
+    <string name="user_management_activate">Activate</string>
+    <string name="user_management_unlock">Unlock</string>
+    <string name="user_management_create_user">Create Member Login</string>
+    <string name="user_management_select_client">Select a member</string>
+    <string name="user_mgmt_client_label">Member</string>
+    <string name="user_mgmt_username_label">Username</string>
+    <string name="user_mgmt_password_label">Password</string>
+    <string name="user_mgmt_confirm_password_label">Confirm Password</string>
+    <string name="user_mgmt_new_password_label">New Password</string>
+    <string name="user_mgmt_show_password">Show</string>
+    <string name="user_mgmt_hide_password">Hide</string>
+    <string name="user_mgmt_create_button">Create Login</string>
+    <string name="user_mgmt_reset_button">Reset Password</string>
+    <string name="user_mgmt_error_username_required">Username is required</string>
+    <string name="user_mgmt_error_username_exists">Username already exists</string>
+    <string name="user_mgmt_error_password_required">Password is required</string>
+    <string name="user_mgmt_error_password_length">Password must be at least 8 characters</string>
+    <string name="user_mgmt_error_password_letter">Password must contain at least one letter</string>
+    <string name="user_mgmt_error_password_digit">Password must contain at least one number</string>
+    <string name="user_mgmt_error_password_mismatch">Passwords do not match</string>
+    <string name="user_mgmt_error_client_required">Please select a member</string>
+    <string name="user_management_reset_password_title">Reset Password for %1$s</string>
+    <string name="user_management_reset_password_desc">Enter a new temporary password. The user will be required to change it on first login.</string>
 </resources>
