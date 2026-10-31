@@ -36,3 +36,15 @@ enum class GroupTxType {
     BANK_DEPOSIT,         // Transfer: Cash -> Bank (Net 0)
     BANK_WITHDRAWAL       // Transfer: Bank -> Cash (Net 0)
 }
+
+@composable
+fun GroupTxType.displayName: String = when (this) {
+    SAVINGS_DEPOSIT -> "Savings Deposit"
+    SAVINGS_WITHDRAWAL -> "Savings Withdrawal"
+    LOAN_DISBURSEMENT -> "Loan Disbursement"
+    LOAN_REPAYMENT -> "Loan Repayment"
+    INTEREST_INCOME -> "Interest Income"
+    EXPENSE -> "Expense"
+    BANK_DEPOSIT -> "Cash → Bank Transfer"
+    BANK_WITHDRAWAL -> "Bank → Cash Transfer"
+}

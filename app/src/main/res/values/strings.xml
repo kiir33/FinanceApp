@@ -176,8 +176,8 @@
     <string name="loan_details_maturity_date">Maturity Date: %1$s</string>
     <string name="loan_details_outstanding_as_of_today">Balance as of today</string>
     <string name="loan_details_principal_remaining">Principal Remaining</string>
-    <string name="label_maturity_date">Maturity Date</string>
-        <string name="label_balance_as_of_today">Balance (as of today)</string>
+        <string name="label_maturity_date">Maturity Date</string>
+    <string name="label_balance_as_of_today">Balance (as of today)</string>
 
     <!-- Login Screen -->
     <string name="login_title">Sign In</string>
@@ -309,4 +309,51 @@
     <string name="user_mgmt_error_client_required">Please select a member</string>
     <string name="user_management_reset_password_title">Reset Password for %1$s</string>
     <string name="user_management_reset_password_desc">Enter a new temporary password. The user will be required to change it on first login.</string>
+
+    <!-- Group Account Screen -->
+    <string name="group_account_title">Group Treasury</string>
+    <string name="group_account_cash_in_hand">Cash in Hand</string>
+    <string name="group_account_bank_balance">Bank Balance</string>
+    <string name="group_account_total_treasury">Total Treasury</string>
+    <string name="group_account_amount_format">Rs. %1$s</string>
+    <string name="group_account_bank_info">Bank Information</string>
+    <string name="group_account_bank_name">Bank Name</string>
+    <string name="group_account_bank_account_number">Account Number</string>
+    <string name="group_account_not_set">Not set</string>
+    <string name="group_account_edit">Edit</string>
+    <string name="group_account_edit_bank_info">Edit Bank Info</string>
+    <string name="group_account_manual_transactions">Manual Transactions</string>
+    <string name="group_account_cash_to_bank">Cash → Bank</string>
+    <string name="group_account_cash_to_bank_desc">Deposit cash to bank account</string>
+    <string name="group_account_bank_to_cash">Bank → Cash</string>
+    <string name="group_account_bank_to_cash_desc">Withdraw cash from bank account</string>
+    <string name="group_account_record_expense">Record Expense</string>
+    <string name="group_account_record_expense_desc">Record operating expense</string>
+    <string name="group_account_record_income">Record Income</string>
+    <string name="group_account_record_income_desc">Record interest or other income</string>
+    <string name="group_account_recent_ledger">Recent Ledger</string>
+    <string name="group_account_no_transactions">No transactions recorded</string>
+    <string name="group_account_transfer_from_cash">Transfer from Cash (Available: Rs. %1$s)</string>
+    <string name="group_account_transfer_from_bank">Transfer from Bank (Available: Rs. %1$s)</string>
+    <string name="group_account_amount_label">Amount (Rs.)</string>
+    <string name="group_account_description_label">Description</string>
+    <string name="group_account_channel_cash">Cash (Balance: Rs. %1$s)</string>
+    <string name="group_account_channel_bank">Bank (Balance: Rs. %1$s)</string>
+    <string name="group_account_transfer_button">Transfer</string>
+    <string name="group_account_record_button">Record</string>
+    <string name="group_account_save_button">Save</string>
+    <string name="group_account_error_invalid_amount">Enter a valid positive amount</string>
+    <string name="group_account_error_insufficient_cash">Insufficient cash balance</string>
+    <string name="group_account_error_insufficient_bank">Insufficient bank balance</string>
+    <string name="group_account_related_member">Related Member ID: %1$d</string>
+
+    <!-- GroupTxType Display Names -->
+    <string name="group_tx_type_savings_deposit">Savings Deposit</string>
+    <string name="group_tx_type_savings_withdrawal">Savings Withdrawal</string>
+    <string name="group_tx_type_loan_disbursement">Loan Disbursement</string>
+    <string name="group_tx_type_loan_repayment">Loan Repayment</string>
+    <string name="group_tx_type_interest_income">Interest Income</string>
+    <string name="group_tx_type_expense">Expense</string>
+    <string name="group_tx_type_bank_deposit">Cash → Bank Transfer</string>
+    <string name="group_tx_type_bank_withdrawal">Bank → Cash Transfer</string>
 </resources>
