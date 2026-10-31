@@ -13,6 +13,7 @@ import com.example.financeapp.database.entities.Loan
 import com.example.financeapp.database.entities.LoanRepayment
 import com.example.financeapp.database.entities.SavingsAccount
 import com.example.financeapp.database.entities.SavingsTransaction
+import com.example.financeapp.database.entities.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -28,6 +29,9 @@ class BankRepository(private val db: AppDatabase) {
     private val auditLogDao = db.auditLogDao()
 
     val allClients: Flow<List<Client>> = clientDao.getAllClients()
+    val allUsers: Flow<List<User>> = userDao.getAllUsers()
+    val groupAccount: Flow<GroupAccount?> = groupAccountDao.observeGroupAccount()
+    val recentGroupTransactions: Flow<List<GroupTransaction>> = groupTransactionDao.getRecentTransactions(50)
     val totalSavings: Flow<Double?> = savingsDao.getTotalSavings()
     val totalOutstandingLoans: Flow<Double?> = loanDao.getTotalOutstandingLoans()
     val allLoans: Flow<List<Loan>> = loanDao.getAllLoans()
@@ -457,6 +461,26 @@ class BankRepository(private val db: AppDatabase) {
                     timestamp = timestamp
                 )
 
+                true
+            }
+        }
+    }
+
+    suspend fun updateGroupAccountBankInfo(bankName: String, bankAccountNumber: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            db.withTransaction {
+                val groupAccount = groupAccountDao.getGroupAccountById() ?: return@withTransaction false
+                val updatedGroupAccount = groupAccount.copy(
+                    bankName = bankName,
+                    bankAccountNumber = bankAccountNumber,
+                    lastUpdated = System.currentTimeMillis()
+                )
+                groupAccountDao.updateGroupAccount(updatedGroupAccount)
+                writeAuditLog(
+                    action = "UPDATE_BANK_INFO",
+                    recordedByUserId = 1,
+                    details = "Updated bank info: $bankName, $bankAccountNumber"
+                )
                 true
             }
         }

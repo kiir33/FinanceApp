@@ -29,4 +29,13 @@ interface GroupTransactionDao {
 
     @Query("SELECT * FROM group_transactions WHERE type = :type ORDER BY transactionDate DESC")
     fun getTransactionsByType(type: String): Flow<List<GroupTransaction>>
+
+    @Query("SELECT SUM(amount) FROM group_transactions WHERE type = 'EXPENSE'")
+    fun getExpensesTotal(): Flow<Double?>
+
+    @Query("SELECT SUM(amount) FROM group_transactions WHERE type = 'INTEREST_INCOME'")
+    fun getInterestIncomeTotal(): Flow<Double?>
+
+    @Query("SELECT * FROM group_transactions ORDER BY transactionDate DESC LIMIT :limit")
+    fun getRecentTransactions(limit: Int): Flow<List<GroupTransaction>>
 }
