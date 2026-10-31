@@ -79,29 +79,34 @@ Co-authored-by: <model-id> <model-id>@users.noreply.github.com
 
 ## Model Fallback Protocol
 
+**Configuration Source**: `.agents/config/models.yaml` (single source of truth)
+
 ### Universal Fallback Chain (all roles)
 When ANY model in the pipeline hits token limit / rate limit / 429 / 503 / context window exceeded:
 1. **Log** to `.agents/logs/model-fallback.log`:
    ```json
    {"timestamp": "ISO8601", "role": "lead|worker|reviewer", "original_model": "...", "fallback_model": "...", "reason": "token_limit|rate_limit|context_overflow|error"}
    ```
-2. **Switch** to next model in that role's priority chain (defined in `.agents/config/{role}-agent.yaml`)
+2. **Read** next model from `.agents/config/models.yaml` → `<role>.fallbacks[]`
 3. **Retry** the exact same operation with fallback model
 4. **Continue** chain until success or all models exhausted
 
-### Role-Specific Priority Chains
+### Role-Specific Priority Chains (defined in `.agents/config/models.yaml`)
 
-| Role | Primary | Fallback 1 | Fallback 2 | Last Resort |
-|------|---------|------------|------------|-------------|
-| **Lead** | `nvidia/nvidia/nemotron-3-ultra-550b-a55b` | `openrouter/nvidia/nemotron-3-ultra-550b-a55b:free` | — | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` |
-| **Worker** | `opencode/deepseek-v4.1-flash-free` | `openrouter/deepseek/deepseek-v4.1-flash-1017` | `openrouter/~deepseek/deepseek-pro-latest` | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` |
-| **Reviewer** | `opencode/glm-5.3-flash-free` | `nvidia/z-ai/glm-5.3-flash` | — | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` |
+| Role | Primary | Fallbacks | Last Resort |
+|------|---------|-----------|-------------|
+| **Lead** | `nvidia/nvidia/nemotron-3-ultra-550b-a55b` | OpenRouter Nemotron 3 Ultra | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` |
+| **Worker** | `opencode/deepseek-v4.1-flash-free` | OpenRouter DeepSeek v4.1 Flash, DeepSeek Pro | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` |
+| **Reviewer** | `opencode/glm-5.3-flash-free` | NVIDIA GLM 5.3 Flash | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` |
+
+> **To change models**: Edit `.agents/config/models.yaml` — all agents read from there.
 
 ### Implementation Notes
-- Lead agent MUST implement fallback logic when spawning subagents
+- Lead agent MUST implement fallback logic when spawning subagents (read from `models.yaml`)
 - Each subagent invocation should wrap in try/catch with fallback retry
 - Fallback log is append-only; rotate weekly
 - If ALL models in chain fail → escalate to human with full log context
+- Global settings (log path, triggers, co-author domain) in `models.yaml` → `global`
 
 ## Agent Documentation Structure
 ```

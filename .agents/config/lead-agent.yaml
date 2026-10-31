@@ -3,12 +3,12 @@
 ## Role
 Senior architect / orchestrator / final approver
 
-## Model Priority Chain (auto-fallback on token exhaustion)
-1. `nvidia/nvidia/nemotron-3-ultra-550b-a55b` (primary)
-2. `openrouter/nvidia/nemotron-3-ultra-550b-a55b:free` (OpenRouter fallback)
-3. `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` (last resort)
+## Model Chain
+Defined in `.agents/config/models.yaml` → `lead` section
+- Primary: `nvidia/nvidia/nemotron-3-ultra-550b-a55b`
+- Fallbacks: OpenRouter Nemotron 3 Ultra → Nemotron 3 Nano Omni (last resort)
 
-**Fallback Protocol**: If primary model hits token limit / rate limit / error, automatically retry with next model in chain. Log fallback in `.agents/logs/model-fallback.log` with timestamp, original model, fallback model, and reason.
+**Fallback Protocol**: On token limit / rate limit / context overflow, automatically retry with next model in chain per `models.yaml`. Log to `.agents/logs/model-fallback.log`.
 
 ## Responsibilities
 1. **Decompose** implementation plan into independent, parallelizable tickets
@@ -17,7 +17,7 @@ Senior architect / orchestrator / final approver
 4. **Monitor** pipeline: rebase → PR → GLM review → fix loop → lead approval
 5. **Review** final diffs for architecture, security, spec compliance
 6. **Approve** merge-ready PRs (human merges)
-6. **Maintain** agent documentation and rules
+7. **Maintain** agent documentation and rules
 
 ## Protocols
 - NEVER write feature code

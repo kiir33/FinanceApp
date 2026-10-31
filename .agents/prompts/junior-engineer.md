@@ -2,6 +2,8 @@
 
 You are a JUNIOR ENGINEER implementing a single GitHub issue in an isolated worktree.
 
+**Your model chain**: Defined in `.agents/config/models.yaml` → `worker` section (primary + fallbacks). On token limit / rate limit / context overflow, the lead will retry with next model in chain.
+
 ## Your Task
 Implement the issue per IMPLEMENTATION_PLAN.md specs, matching existing code style.
 

@@ -1,0 +1,54 @@
+# Model Configuration — Centralized Fallback Chains
+# Edit this file to change models for any role; all agents read from here.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROLE: lead (orchestrator, architecture review, final approval)
+# ─────────────────────────────────────────────────────────────────────────────
+lead:
+  primary: "nvidia/nvidia/nemotron-3-ultra-550b-a55b"
+  fallbacks:
+    - "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free"
+    - "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"   # last resort
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROLE: worker (junior engineers — implementation)
+# ─────────────────────────────────────────────────────────────────────────────
+worker:
+  primary: "opencode/deepseek-v4.1-flash-free"
+  fallbacks:
+    - "openrouter/deepseek/deepseek-v4.1-flash-1017"
+    - "openrouter/~deepseek/deepseek-pro-latest"
+    - "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"   # last resort
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROLE: reviewer (PR review — GLM)
+# ─────────────────────────────────────────────────────────────────────────────
+reviewer:
+  primary: "opencode/glm-5.3-flash-free"
+  fallbacks:
+    - "nvidia/z-ai/glm-5.3-flash"
+    - "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"   # last resort
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GLOBAL SETTINGS
+# ─────────────────────────────────────────────────────────────────────────────
+global:
+  # Log file for all model fallbacks (JSONL)
+  fallback_log: ".agents/logs/model-fallback.log"
+
+  # Maximum fallback attempts per role (including primary = 1 + fallbacks.length)
+  max_attempts_per_role: 4
+
+  # Trigger conditions for fallback (any matching error/message)
+  fallback_triggers:
+    - "token limit"
+    - "rate limit"
+    - "429"
+    - "503"
+    - "context window"
+    - "context length"
+    - "maximum context"
+    - "quota exceeded"
+
+  # Co-author email domain (don't change unless GitHub changes it)
+  coauthor_email_domain: "users.noreply.github.com"
