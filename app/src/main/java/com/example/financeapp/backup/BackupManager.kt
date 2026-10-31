@@ -50,17 +50,19 @@ class BackupManager(private val context: Context) {
      * Exports entire database to encrypted .apex file via SAF.
      * Returns BackupResult.
      */
-    suspend fun exportDatabase(db: AppDatabase, destUri: Uri, userId: Long, username: String): BackupResult {
+    suspend fun exportDatabase(
+        db: AppDatabase,
+        destUri: Uri,
+        userId: Long,
+        username: String,
+        passphrase: CharArray
+    ): BackupResult {
         return withContext(Dispatchers.IO) {
             try {
                 // 1. Dump all tables to JSON
                 val jsonString = dumpDatabaseToJson(db)
 
-                // 2. Prompt for passphrase (in real app, this would be from UI)
-                // For now, we'll use a default passphrase - the UI should provide this
-                val passphrase = "default_backup_passphrase".toCharArray()
-
-                // 3. Encrypt to .apex
+                // 2. Encrypt to .apex
                 context.contentResolver.openOutputStream(destUri)?.use { outputStream ->
                     BackupCryptoEngine.encryptPayload(jsonString, passphrase, outputStream)
                 } ?: return@withContext BackupResult.Failure("Failed to open output stream")
