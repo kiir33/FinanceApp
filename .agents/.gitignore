@@ -1,0 +1,4 @@
+# Agent workspace - ignore ephemeral logs
+logs/
+*.log
+*.tmp
