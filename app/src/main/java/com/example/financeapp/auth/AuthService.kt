@@ -151,7 +151,7 @@ class AuthService private constructor(
             }
 
             // Check if new password is same as old
-            // Using existing salt to detect identical password (same salt -> same hash)
+            // Using existing salt to detect identical password (same salt → same hash)
             val newPasswordHash = PasswordHasher.hashPassword(newPassword, user.salt)
             if (newPasswordHash == user.passwordHash) {
                 return@withContext AuthResult.PasswordChangeFailure.SameAsOldPassword
