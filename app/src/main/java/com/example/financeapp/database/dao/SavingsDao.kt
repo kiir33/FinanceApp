@@ -54,4 +54,10 @@ interface SavingsDao {
         insertTransaction(SavingsTransaction(accountId = accountId, amount = -amount, type = "WITHDRAWAL", description = description))
         return true
     }
+
+    @Query("SELECT * FROM savings_transactions WHERE transactionDate BETWEEN :from AND :to ORDER BY transactionDate ASC")
+    fun getTransactionsBetween(from: Long, to: Long): Flow<List<SavingsTransaction>>
+
+    @Query("SELECT * FROM savings_transactions ORDER BY transactionDate ASC")
+    fun getAllTransactions(): Flow<List<SavingsTransaction>>
 }

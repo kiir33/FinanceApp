@@ -179,6 +179,21 @@
         <string name="label_maturity_date">Maturity Date</string>
     <string name="label_balance_as_of_today">Balance (as of today)</string>
 
+<<<<<<< HEAD
+    <!-- Reports Dashboard Screen -->
+    <string name="reports_dashboard_title">Financial Reports</string>
+    <string name="reports_dashboard_subtitle">Export CSV reports for AGM, audit, and analysis</string>
+    <string name="reports_download">Download</string>
+    <string name="reports_export_success">%1$s exported successfully!</string>
+    <string name="reports_export_error">Export failed: %1$s</string>
+    <string name="reports_date_range_title">Date Range for %1$s</string>
+    <string name="reports_date_range_desc">Select date range for the report</string>
+    <string name="reports_from_date_label">From Date (YYYY-MM-DD)</string>
+    <string name="reports_to_date_label">To Date (YYYY-MM-DD)</string>
+    <string name="reports_error_date_range">From date must be before to date</string>
+    <string name="reports_error_invalid_date">Invalid date format. Use YYYY-MM-DD</string>
+    <string name="dialog_confirm">Confirm</string>
+=======
     <!-- Login Screen -->
     <string name="login_title">Sign In</string>
     <string name="login_subtitle">Enter your credentials to access your account</string>
@@ -356,4 +371,5 @@
     <string name="group_tx_type_expense">Expense</string>
     <string name="group_tx_type_bank_deposit">Cash → Bank Transfer</string>
     <string name="group_tx_type_bank_withdrawal">Bank → Cash Transfer</string>
+>>>>>>> origin/main
 </resources>
