@@ -178,4 +178,36 @@
     <string name="loan_details_principal_remaining">Principal Remaining</string>
     <string name="label_maturity_date">Maturity Date</string>
     <string name="label_balance_as_of_today">Balance (as of today)</string>
+
+    <!-- Admin Setup Screen -->
+    <string name="admin_setup_title">Initial Admin Setup</string>
+    <string name="admin_setup_subtitle">Create the first administrator account for this group</string>
+    <string name="admin_setup_username_label">Username</string>
+    <string name="admin_setup_username_hint">Enter a unique username</string>
+    <string name="admin_setup_name_label">Full Name</string>
+    <string name="admin_setup_name_hint">Enter your full name</string>
+    <string name="admin_setup_phone_label">Phone Number</string>
+    <string name="admin_setup_phone_hint">Enter phone number (7-15 digits)</string>
+    <string name="admin_setup_client_id_label">Member ID</string>
+    <string name="admin_setup_client_id_hint">Your member ID (e.g., 1)</string>
+    <string name="admin_setup_password_label">Master Password</string>
+    <string name="admin_setup_password_hint">Min 8 chars, letters & numbers</string>
+    <string name="admin_setup_confirm_password_label">Confirm Password</string>
+    <string name="admin_setup_confirm_password_hint">Re-enter your password</string>
+    <string name="admin_setup_show_password">Show Password</string>
+    <string name="admin_setup_hide_password">Hide Password</string>
+    <string name="admin_setup_create_button">Create Admin Account</string>
+    <string name="admin_setup_error_username_required">Username is required</string>
+    <string name="admin_setup_error_name_required">Full name is required</string>
+    <string name="admin_setup_error_phone_required">Phone number is required</string>
+    <string name="admin_setup_error_invalid_phone">Enter a valid phone number (7-15 digits)</string>
+    <string name="admin_setup_error_client_id_required">Member ID is required</string>
+    <string name="admin_setup_error_invalid_client_id">Member ID must be a positive integer</string>
+    <string name="admin_setup_error_password_required">Password is required</string>
+    <string name="admin_setup_error_password_length">Password must be at least 8 characters</string>
+    <string name="admin_setup_error_password_letter">Password must contain at least one letter</string>
+    <string name="admin_setup_error_password_digit">Password must contain at least one number</string>
+    <string name="admin_setup_error_password_mismatch">Passwords do not match</string>
+    <string name="admin_setup_error_user_exists">An admin account already exists</string>
+    <string name="admin_setup_error_unknown">An unknown error occurred. Please try again.</string>
 </resources>
