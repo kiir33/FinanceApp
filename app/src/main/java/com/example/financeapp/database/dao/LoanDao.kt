@@ -59,4 +59,10 @@ interface LoanDao {
         insertRepayment(LoanRepayment(loanId = loanId, amount = amount, principalPaid = principalPaid, interestPaid = interestPaid, timestamp = timestamp))
         return true
     }
+
+    @Query("SELECT * FROM loans WHERE status = 'ACTIVE' ORDER BY loanDate DESC")
+    fun getActiveLoans(): Flow<List<Loan>>
+
+    @Query("SELECT * FROM loan_repayments ORDER BY timestamp ASC")
+    fun getAllRepayments(): Flow<List<LoanRepayment>>
 }
