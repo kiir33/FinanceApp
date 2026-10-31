@@ -526,4 +526,176 @@ class BackupManager(private val context: Context) {
             return "finance_backup_${sdf.format(Date())}.apex"
         }
     }
+
+    // --- Google Drive Integration ---
+
+    private val driveClient = GoogleDriveClient(context)
+
+    /**
+     * Checks if user is signed in to Google Drive.
+     */
+    fun isDriveSignedIn(): Boolean = driveClient.isSignedIn()
+
+    /**
+     * Gets the current Drive account email.
+     */
+    fun getDriveAccountEmail(): String? = driveClient.getCurrentAccountEmail()
+
+    /**
+     * Initiates Google Sign-In for Drive.
+     * Returns the sign-in intent to be launched by the caller.
+     */
+    fun getDriveSignInIntent(): android.content.Intent {
+        return driveClient.googleSignInClient.signInIntent
+    }
+
+    /**
+     * Handles the sign-in result from onActivityResult.
+     */
+    fun handleDriveSignInResult(result: com.google.android.gms.tasks.Task<com.google.android.gms.auth.api.signin.GoogleSignInAccount>): GoogleDriveClient.DriveResult<com.google.android.gms.auth.api.signin.GoogleSignInAccount> {
+        return driveClient.handleSignInResult(result)
+    }
+
+    /**
+     * Signs out from Google Drive.
+     */
+    suspend fun driveSignOut(): GoogleDriveClient.DriveResult<Unit> = driveClient.signOut()
+
+    /**
+     * Uploads encrypted database backup to Google Drive.
+     */
+    suspend fun uploadBackupToDrive(
+        db: AppDatabase,
+        passphrase: CharArray,
+        userId: Long,
+        username: String
+    ): GoogleDriveClient.DriveResult<GoogleDriveClient.DriveFile> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1. Dump database to JSON
+                val jsonString = dumpDatabaseToJson(db)
+
+                // 2. Encrypt to .apex in memory
+                val byteOut = ByteArrayOutputStream()
+                BackupCryptoEngine.encryptPayload(jsonString, passphrase, byteOut)
+                val encryptedBytes = byteOut.toByteArray()
+
+                // 3. Generate filename
+                val fileName = generateBackupFileName()
+
+                // 4. Upload to Drive
+                val inputStream = ByteArrayInputStream(encryptedBytes)
+                val uploadResult = driveClient.uploadBackup(fileName, inputStream)
+
+                // 5. Clean up old backups (keep 5 most recent)
+                if (uploadResult is GoogleDriveClient.DriveResult.Success) {
+                    driveClient.cleanupOldBackups(5)
+                }
+
+                // 6. Audit log
+                if (uploadResult is GoogleDriveClient.DriveResult.Success) {
+                    db.auditLogDao().insertAuditLog(AuditLog(
+                        userId = userId,
+                        username = username,
+                        action = "DRIVE_BACKUP_UPLOAD",
+                        details = "Encrypted backup uploaded to Google Drive: ${uploadResult.data.name}"
+                    ))
+                }
+
+                uploadResult
+            } catch (e: Exception) {
+                GoogleDriveClient.DriveResult.Failure("Drive upload failed: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Lists recent backups from Google Drive.
+     */
+    suspend fun listDriveBackups(maxResults: Int = 5): GoogleDriveClient.DriveResult<List<GoogleDriveClient.DriveFile>> {
+        return driveClient.listRecentBackups(maxResults)
+    }
+
+    /**
+     * Downloads and restores database from Google Drive backup.
+     */
+    suspend fun restoreFromDrive(
+        db: AppDatabase,
+        fileId: String,
+        passphrase: CharArray,
+        userId: Long,
+        username: String,
+        onDbReopened: () -> Unit
+    ): BackupResult {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1. Download backup from Drive
+                val downloadResult = driveClient.downloadBackup(fileId)
+                if (downloadResult is GoogleDriveClient.DriveResult.Failure) {
+                    return@withContext BackupResult.Failure("Download failed: ${downloadResult.message}", downloadResult.exception)
+                }
+
+                // 2. Decrypt and restore using existing import logic
+                val inputStream = ByteArrayInputStream(downloadResult.data)
+                val jsonString = BackupCryptoEngine.decryptPayload(inputStream, passphrase)
+
+                // 3. Parse and validate JSON
+                val jsonObj = try {
+                    json.decodeFromString(kotlinx.serialization.json.JsonObject.serializer(), jsonString)
+                } catch (e: DecodingException) {
+                    return@withContext BackupResult.Failure("Invalid backup file format: ${e.message}", e)
+                }
+
+                // 4. Validate version
+                val version = jsonObj["version"]?.jsonPrimitive?.int ?: 0
+                if (version != 1) {
+                    return@withContext BackupResult.Failure("Unsupported backup version: $version")
+                }
+
+                // 5. Restore in single transaction
+                db.runInTransaction {
+                    clearAllTables(db)
+                    restoreClients(db, jsonObj)
+                    restoreSavingsAccounts(db, jsonObj)
+                    restoreSavingsTransactions(db, jsonObj)
+                    restoreLoans(db, jsonObj)
+                    restoreLoanRepayments(db, jsonObj)
+                    restoreUsers(db, jsonObj)
+                    restoreGroupAccount(db, jsonObj)
+                    restoreGroupTransactions(db, jsonObj)
+                    restoreAuditLogs(db, jsonObj)
+                }
+
+                // 6. Reopen database
+                onDbReopened()
+
+                // 7. Integrity check
+                val integrityResult = verifyIntegrity(db)
+                if (!integrityResult.isValid) {
+                    return@withContext BackupResult.Failure("Integrity check failed: ${integrityResult.errors.joinToString(", ")}")
+                }
+
+                // 8. Audit log for restore
+                db.auditLogDao().insertAuditLog(AuditLog(
+                    userId = userId,
+                    username = username,
+                    action = "DRIVE_BACKUP_RESTORE",
+                    details = "Full database restored from Google Drive backup"
+                ))
+
+                BackupResult.Success
+            } catch (e: IllegalArgumentException) {
+                BackupResult.Failure("Invalid backup file or wrong passphrase: ${e.message}", e)
+            } catch (e: Exception) {
+                BackupResult.Failure("Drive restore failed: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Deletes a backup from Google Drive.
+     */
+    suspend fun deleteDriveBackup(fileId: String): GoogleDriveClient.DriveResult<Unit> {
+        return driveClient.deleteBackup(fileId)
+    }
 }

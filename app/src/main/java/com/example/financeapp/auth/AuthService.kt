@@ -12,6 +12,7 @@ import com.example.financeapp.database.entities.User
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.mockito.Mockito.mock
 
 class AuthService private constructor(
     private val application: Application,
@@ -40,6 +41,14 @@ class AuthService private constructor(
         // For testing
         fun resetInstance() {
             INSTANCE = null
+        }
+
+        // For testing with mock database
+        fun getInstanceForTest(db: AppDatabase): AuthService {
+            return AuthService(
+                application = mock(Application::class.java),
+                db = db
+            )
         }
     }
 
