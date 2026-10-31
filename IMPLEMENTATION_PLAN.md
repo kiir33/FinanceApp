@@ -568,18 +568,69 @@ sequenceDiagram
         User->>CsvImporter: Click "Confirm Import"
         CsvImporter->>DB: Begin Transaction
         DB->>DB: Insert Clients
-        DB->>DB: Create User logins (default pass = Phone)
+        DB->>DB: Create User logins (snake_case username with collision check)
         DB->>DB: Insert Savings & Opening Transactions
         DB->>DB: Insert Loans
         DB->>DB: Commit Transaction
-        CsvImporter-->>User: Show Success + Generated Credentials
+        CsvImporter-->>User: Show Success + Option to Export Welcome Slips
     end
 ```
 
-- **Credential Generation for Imported Members**:
-  - `username = "mem" + Member_ID` (e.g. `mem101`)
-  - Initial temporary password = Member's `Phone_Number`
-  - `mustChangePassword = true`
+### 8.3 Practical Credential Generation Strategy for Imported Members
+
+#### A. Username Generation Algorithm
+When bulk-importing members, generating arbitrary handles like `mem101` is unintuitive. Instead, use **Normalized Full Name (snake_case) with Smart Collision Resolution**:
+
+1. **Base Username (Snake Case)**:
+   - Convert `Full_Name` to lowercase.
+   - Replace whitespace, hyphens, and non-alphanumeric characters with underscores (`_`).
+   - Collapse consecutive underscores (`__` $\rightarrow$ `_`) and strip leading/trailing underscores.
+   - *Example*: `"Ram Kumar Shrestha"` $\rightarrow$ `ram_kumar_shrestha`
+   - *Example*: `"Mary-Jane O'Connor"` $\rightarrow$ `mary_jane_o_connor`
+   - *Fallback*: If the name produces an empty slug, fallback to `member_${Member_ID}`.
+
+2. **Collision Resolution**:
+   - Check if `base_username` already exists in `users` table.
+   - If **no conflict**: use `base_username`.
+   - If **conflict exists**: append the member ID: `${base_username}_${Member_ID}` (e.g., if `john_doe` already exists, a new member with ID `105` becomes `john_doe_105`).
+
+```kotlin
+fun generateUniqueUsername(fullName: String, memberId: Int, existingUsernames: Set<String>): String {
+    val slug = fullName.trim()
+        .lowercase()
+        .replace(Regex("[^a-z0-9]+"), "_")
+        .trim('_')
+        .ifEmpty { "member_$memberId" }
+
+    return if (!existingUsernames.contains(slug)) {
+        slug
+    } else {
+        "${slug}_$memberId"
+    }
+}
+```
+
+#### B. Flexible Login Identifier Support (Username / Member ID / Phone)
+In real-world group scenarios, members (especially less tech-savvy or elderly members) may forget exact underscore spellings. To provide the best UX, the login screen allows authentication using **any of the three unique identifiers**:
+
+```kotlin
+@Query("""
+    SELECT u.* FROM users u
+    LEFT JOIN clients c ON u.clientId = c.id
+    WHERE u.username = :loginId 
+       OR c.phoneNumber = :loginId 
+       OR CAST(c.clientId AS TEXT) = :loginId
+    LIMIT 1
+""")
+suspend fun findUserByLoginIdentifier(loginId: String): User?
+```
+> [!TIP]
+> A member can log in using either their generated username (`ram_kumar_shrestha`), their Member ID (`101`), or their registered Phone Number (`9800000001`), followed by their password.
+
+#### C. Temporary Password & Welcome Credentials Distribution
+- **Temporary Password**: Set to the member's `Phone_Number` (clean numeric digits, e.g. `9800000001`).
+- **Enforced First-Time Password Reset**: `mustChangePassword = true`. Upon first successful login, the member is blocked from viewing balances and immediately routed to `ChangePasswordScreen` to set their private password.
+- **Welcome Credentials Export**: After a successful CSV import, the app offers an **"Export Member Credentials Sheet"** (`member_credentials_summary.csv` containing: `Member_ID`, `Full_Name`, `Username`, `Phone_Number`, `Temporary_Password`). The admin can print this or use it to distribute login slips to group members.
 
 ---
 
