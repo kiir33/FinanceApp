@@ -1,11 +1,13 @@
 package com.example.financeapp.ui.main
 
 import android.app.Application
+import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.financeapp.auth.SessionManager
 import com.example.financeapp.backup.BackupManager
+import com.example.financeapp.backup.GoogleDriveClient
 import com.example.financeapp.data.BankRepository
 import com.example.financeapp.database.AppDatabase
 import com.example.financeapp.database.entities.Client
@@ -320,6 +322,17 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun exportDatabaseWithPassphrase(destUri: Uri, passphrase: CharArray) {
+        viewModelScope.launch {
+            val result = backupManager.exportDatabase(db, destUri, currentUserId, SessionManager.currentSession.value?.username ?: "admin", passphrase)
+            if (result.isSuccess) {
+                _backupRestoreEvent.emit(BackupRestoreResult.BackupSuccess)
+            } else {
+                _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.exceptionOrNull()?.message ?: "Unknown error"))
+            }
+        }
+    }
+
     fun importDatabase(sourceUri: Uri) {
         viewModelScope.launch {
             val result = backupManager.importDatabase(db, sourceUri) {
@@ -331,6 +344,104 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
                 _backupRestoreEvent.emit(BackupRestoreResult.RestoreSuccess)
             } else {
                 _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.exceptionOrNull()?.message ?: "Unknown error"))
+            }
+        }
+    }
+
+    fun importDatabaseWithPassphrase(sourceUri: Uri, passphrase: CharArray) {
+        viewModelScope.launch {
+            val result = backupManager.importDatabase(db, sourceUri, passphrase, currentUserId, SessionManager.currentSession.value?.username ?: "admin") {
+                // Re-open DB
+                db = AppDatabase.getDatabase(getApplication())
+                repository = BankRepository(db)
+            }
+            if (result.isSuccess) {
+                _backupRestoreEvent.emit(BackupRestoreResult.RestoreSuccess)
+            } else {
+                _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.exceptionOrNull()?.message ?: "Unknown error"))
+            }
+        }
+    }
+
+    // --- Google Drive Methods ---
+
+    fun isDriveSignedIn(): Boolean = backupManager.isDriveSignedIn()
+
+    fun getDriveAccountEmail(): String? = backupManager.getDriveAccountEmail()
+
+    fun getDriveSignInIntent(): Intent = backupManager.getDriveSignInIntent()
+
+    fun handleDriveSignInResult(data: Intent): GoogleDriveClient.DriveResult<com.google.android.gms.auth.api.signin.GoogleSignInAccount> {
+        return backupManager.handleDriveSignInResult(data)
+    }
+
+    fun driveSignOut(): GoogleDriveClient.DriveResult<Unit> = backupManager.driveSignOut()
+
+    // Drive events
+    private val _driveBackupsEvent = MutableSharedFlow<GoogleDriveClient.DriveResult<List<GoogleDriveClient.DriveFile>>>()
+    val driveBackupsEvent: SharedFlow<GoogleDriveClient.DriveResult<List<GoogleDriveClient.DriveFile>>> = _driveBackupsEvent.asSharedFlow()
+
+    private val _driveSignedInEvent = MutableSharedFlow<Boolean>()
+    val driveSignedInEvent: SharedFlow<Boolean> = _driveSignedInEvent.asSharedFlow()
+
+    private val _driveOperationProgress = MutableSharedFlow<BackupRestoreResult>()
+    val driveOperationProgress: SharedFlow<BackupRestoreResult> = _driveOperationProgress.asSharedFlow()
+
+    fun refreshDriveBackups() {
+        viewModelScope.launch {
+            val result = backupManager.listDriveBackups(5)
+            _driveBackupsEvent.emit(result)
+        }
+    }
+
+    fun uploadBackupToDrive(passphrase: CharArray) {
+        viewModelScope.launch {
+            _driveOperationProgress.emit(BackupRestoreResult.DriveUploadProgress)
+            val result = backupManager.uploadBackupToDrive(db, passphrase, currentUserId, SessionManager.currentSession.value?.username ?: "admin")
+            _driveOperationProgress.emit(BackupRestoreResult.DriveOperationComplete(""))
+            when (result) {
+                is GoogleDriveClient.DriveResult.Success -> {
+                    _backupRestoreEvent.emit(BackupRestoreResult.DriveBackupSuccess)
+                }
+                is GoogleDriveClient.DriveResult.Failure -> {
+                    _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.message))
+                }
+            }
+        }
+    }
+
+    fun restoreFromDrive(fileId: String, passphrase: CharArray) {
+        viewModelScope.launch {
+            _driveOperationProgress.emit(BackupRestoreResult.DriveDownloadProgress)
+            val result = backupManager.restoreFromDrive(db, fileId, passphrase, currentUserId, SessionManager.currentSession.value?.username ?: "admin") {
+                // Re-open DB
+                db = AppDatabase.getDatabase(getApplication())
+                repository = BankRepository(db)
+            }
+            _driveOperationProgress.emit(BackupRestoreResult.DriveOperationComplete(fileId))
+            when (result) {
+                is BackupManager.BackupResult.Success -> {
+                    _backupRestoreEvent.emit(BackupRestoreResult.DriveRestoreSuccess)
+                }
+                is BackupManager.BackupResult.Failure -> {
+                    _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.message))
+                }
+            }
+        }
+    }
+
+    fun deleteDriveBackup(fileId: String) {
+        viewModelScope.launch {
+            _driveOperationProgress.emit(BackupRestoreResult.DriveDeleteProgress(fileId))
+            val result = backupManager.deleteDriveBackup(fileId)
+            _driveOperationProgress.emit(BackupRestoreResult.DriveOperationComplete(fileId))
+            when (result) {
+                is GoogleDriveClient.DriveResult.Success -> {
+                    _backupRestoreEvent.emit(BackupRestoreResult.DriveDeleteSuccess)
+                }
+                is GoogleDriveClient.DriveResult.Failure -> {
+                    _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.message))
+                }
             }
         }
     }
@@ -372,4 +483,13 @@ sealed interface BackupRestoreResult {
     data object BackupSuccess : BackupRestoreResult
     data object RestoreSuccess : BackupRestoreResult
     data class Failure(val message: String) : BackupRestoreResult
+
+    // Drive-specific events
+    data object DriveBackupSuccess : BackupRestoreResult
+    data object DriveRestoreSuccess : BackupRestoreResult
+    data object DriveDeleteSuccess : BackupRestoreResult
+    data object DriveUploadProgress : BackupRestoreResult
+    data object DriveDownloadProgress : BackupRestoreResult
+    data class DriveDeleteProgress(val fileId: String) : BackupRestoreResult
+    data class DriveOperationComplete(val fileId: String) : BackupRestoreResult
 }
