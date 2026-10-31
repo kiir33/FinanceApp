@@ -69,7 +69,7 @@ abstract class AppDatabase : RoomDatabase() {
                         \`mustChangePassword\` INTEGER NOT NULL DEFAULT 1,
                         \`createdAt\` INTEGER NOT NULL,
                         \`lastLoginAt\` INTEGER,
-                        FOREIGN KEY(\`clientId\`) REFERENCES \`clients\`(\`id\`) ON UPDATE NO ACTION ON DELETE SET_NULL
+                        FOREIGN KEY(\`clientId\`) REFERENCES \`clients\`(\`id\`) ON UPDATE NO ACTION ON DELETE SET NULL
                     )
                 """.trimIndent())
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS \`index_users_username\` ON \`users\` (\`username\`)")
