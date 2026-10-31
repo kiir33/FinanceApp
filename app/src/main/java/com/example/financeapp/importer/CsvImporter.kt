@@ -1,11 +1,14 @@
 package com.example.financeapp.importer
 
+import androidx.room.withTransaction
 import com.example.financeapp.auth.PasswordHasher
+import com.example.financeapp.database.entities.AuditLog
 import com.example.financeapp.database.entities.Client
 import com.example.financeapp.database.entities.Loan
 import com.example.financeapp.database.entities.SavingsAccount
 import com.example.financeapp.database.entities.User
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStream
@@ -13,7 +16,6 @@ import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Date
 import java.util.Locale
 
 // Data classes for CSV parsing
@@ -65,6 +67,12 @@ data class ImportResult(
     val importedMembers: Int = 0,
     val importedSavings: Int = 0,
     val importedLoans: Int = 0,
+    /**
+     * CSV text containing the generated usernames and temporary passwords.
+     * The UI MUST save this string (e.g. share/save to a file) before leaving the
+     * result screen: temporary passwords are only available here and are never
+     * stored in plaintext by the importer.
+     */
     val credentialsSheet: String? = null
 )
 
@@ -178,7 +186,7 @@ class CsvImporter(
             }
 
             // Execute import in single transaction
-            return@withContext db.runInTransaction {
+            return@withContext db.withTransaction {
                 val existingUsernames = userDao.getAllUsers().first().map { it.username }.toMutableSet()
                 val memberIdToDbId = mutableMapOf<Int, Long>()
                 val memberIdToUsername = mutableMapOf<Int, String>()
@@ -382,7 +390,7 @@ class CsvImporter(
                 }
             }
         }
-        ParseResult(rows, errors)
+        return ParseResult(rows, errors)
     }
 
     private fun parseAndValidateSavings(input: InputStream, validMemberIds: Set<Int>): ParseResult<SavingsRow> {
@@ -450,7 +458,7 @@ class CsvImporter(
                 }
             }
         }
-        ParseResult(rows, errors)
+        return ParseResult(rows, errors)
     }
 
     private fun parseAndValidateLoans(input: InputStream, validMemberIds: Set<Int>): ParseResult<LoanRow> {
@@ -545,51 +553,16 @@ class CsvImporter(
                 }
             }
         }
-        ParseResult(rows, errors)
+        return ParseResult(rows, errors)
     }
 
-    private fun crossValidate(members: List<MemberRow>, savings: List<SavingsRow>, loans: List<LoanRow>): List<ValidationError> {
+    private suspend fun crossValidate(
+        members: List<MemberRow>,
+        savings: List<SavingsRow>,
+        loans: List<LoanRow>
+    ): List<ValidationError> {
         val errors = mutableListOf<ValidationError>()
         val memberIds = members.map { it.memberId }.toSet()
-
-        // Check guarantor references in loans
-        for (loan in loans) {
-            if (loan.guarantorMemberId != null && loan.guarantorMemberId !in memberIds) {
-                errors.add(ValidationError(-1, "Guarantor_Member_ID", "Loan references unknown guarantor member ID \${loan.guarantorMemberId}"))
-            }
-        }
-
-        // Check savings member IDs
-        for (saving in savings) {
-            if (saving.memberId !in memberIds) {
-                errors.add(ValidationError(-1, "Member_ID", "Savings references unknown member ID \${saving.memberId}"))
-            }
-        }
-
-        // Cross-validation: Guarantor can only guarantee 1 active loan
-        val guarantorCounts = mutableMapOf<Int, Int>()
-        for (loan in loans) {
-            if (loan.guarantorMemberId != null) {
-                val count = guarantorCounts.getOrDefault(loan.guarantorMemberId!!, 0) + 1
-                guarantorCounts[loan.guarantorMemberId!!] = count
-                if (count > 1) {
-                    errors.add(ValidationError(-1, "Guarantor_Member_ID", "Guarantor member ID \${loan.guarantorMemberId} cannot guarantee more than 1 loan in this import"))
-                }
-            }
-        }
-
-        // Cross-validation: Borrower cannot have active loan in this import
-        val borrowerCounts = mutableMapOf<Int, Int>()
-        for (loan in loans) {
-            val count = borrowerCounts.getOrDefault(loan.memberId, 0) + 1
-            borrowerCounts[loan.memberId] = count
-            if (count > 1) {
-                errors.add(ValidationError(-1, "Member_ID", "Borrower member ID \${loan.memberId} has multiple active loans in this import"))
-            }
-        }
-
-        return errors
-    }.toSet()
 
         // Check guarantor references in loans
         for (loan in loans) {
@@ -605,7 +578,36 @@ class CsvImporter(
             }
         }
 
-        return errors
+        // Only loans that will remain ACTIVE are subject to the one-active-loan rules.
+        val activeLoans = loans.filter { it.currentPrincipalOutstanding > 0 }
+
+        // Cross-validation: a guarantor may guarantee at most 1 active loan,
+        // both within this import and in the existing database.
+        val guarantorCounts = activeLoans.mapNotNull { it.guarantorMemberId }.groupingBy { it }.eachCount()
+        for ((guarantorMemberId, count) in guarantorCounts) {
+            if (count > 1) {
+                errors.add(ValidationError(-1, "Guarantor_Member_ID", "Guarantor member ID $guarantorMemberId cannot guarantee more than 1 active loan in this import"))
+            }
+            val existingClient = clientDao.getClientByClientId(guarantorMemberId)
+            if (existingClient != null && loanDao.getActiveLoansGuaranteedCount(existingClient.id) > 0) {
+                errors.add(ValidationError(-1, "Guarantor_Member_ID", "Guarantor member ID $guarantorMemberId already guarantees an active loan"))
+            }
+        }
+
+        // Cross-validation: a borrower may have at most 1 active loan,
+        // both within this import and in the existing database.
+        val borrowerCounts = activeLoans.groupingBy { it.memberId }.eachCount()
+        for ((borrowerMemberId, count) in borrowerCounts) {
+            if (count > 1) {
+                errors.add(ValidationError(-1, "Member_ID", "Borrower member ID $borrowerMemberId has multiple active loans in this import"))
+            }
+            val existingClient = clientDao.getClientByClientId(borrowerMemberId)
+            if (existingClient != null && loanDao.getActiveLoansCount(existingClient.id) > 0) {
+                errors.add(ValidationError(-1, "Member_ID", "Borrower member ID $borrowerMemberId already has an active loan"))
+            }
+        }
+
+        return errors.distinct()
     }
 
     // --- Username Generation (Section 8.3.A) ---
