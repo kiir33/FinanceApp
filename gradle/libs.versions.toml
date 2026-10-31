@@ -15,6 +15,10 @@ ksp = "2.3.9"
 room = "2.8.4"
 nav3Core = "1.0.1"
 lifecycleViewmodelNav3 = "2.10.0"
+biometric = "1.2.0-alpha05"
+playServicesAuth = "21.3.0"
+googleApiClientAndroid = "2.7.2"
+googleApiServicesDrive = "v3-rev20241220-2.0.0"
 
 
 [libraries]
@@ -45,6 +49,14 @@ androidx-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecy
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+
+# Biometric Prompt
+androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
+
+# Google Sign-In & Drive REST API v3
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
+google-api-client-android = { module = "com.google.api-client:google-api-client-android", version.ref = "googleApiClientAndroid" }
+google-api-services-drive = { module = "com.google.apis:google-api-services-drive", version.ref = "googleApiServicesDrive" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
