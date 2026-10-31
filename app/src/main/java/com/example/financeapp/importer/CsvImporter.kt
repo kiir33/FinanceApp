@@ -273,15 +273,15 @@ class CsvImporter(
                 }
 
                 // Generate credentials sheet CSV
+                val credentialsSheet = generateCredentialsSheet(credentialsRows)
+
                 // Audit log for CSV import
                 db.auditLogDao().insertAuditLog(AuditLog(
                     userId = 1, // TODO: get actual admin user ID from context
                     username = "admin",
                     action = "CSV_IMPORT",
-                    details = "Bulk import: \${memberResult.rows.size} members, \${savingsRows.size} savings, \${loanRows.size} loans"
+                    details = "Bulk import: ${memberResult.rows.size} members, ${savingsRows.size} savings, ${loanRows.size} loans"
                 ))
-
-        val credentialsSheet = generateCredentialsSheet(credentialsRows)
 
                 ImportResult(
                     success = true,
