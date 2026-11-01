@@ -18,7 +18,7 @@ lifecycleViewmodelNav3 = "2.10.0"
 biometric = "1.2.0-alpha05"
 playServicesAuth = "21.3.0"
 googleApiClientAndroid = "2.7.2"
-googleApiServicesDrive = "v3-rev20241220-2.0.0"
+googleApiServicesDrive = "v3-rev20261011-2.0.0"
 
 
 [libraries]

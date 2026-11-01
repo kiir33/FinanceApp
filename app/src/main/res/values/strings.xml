@@ -179,7 +179,7 @@
         <string name="label_maturity_date">Maturity Date</string>
     <string name="label_balance_as_of_today">Balance (as of today)</string>
 
-<<<<<<< HEAD
+
     <!-- CSV Import Screen -->
     <string name="csv_import_title">CSV Bulk Import</string>
     <string name="csv_import_select_template">Select Import Template</string>
@@ -215,8 +215,8 @@
     <string name="csv_import_template_downloaded">%1$s template downloaded</string>
     <string name="csv_import_credentials_saved">Credentials sheet saved successfully</string>
     <string name="csv_import_error_members_required">Members CSV file is required</string>
-=======
-<<<<<<< HEAD
+=
+
     <!-- Reports Dashboard Screen -->
     <string name="reports_dashboard_title">Financial Reports</string>
     <string name="reports_dashboard_subtitle">Export CSV reports for AGM, audit, and analysis</string>
@@ -230,7 +230,7 @@
     <string name="reports_error_date_range">From date must be before to date</string>
     <string name="reports_error_invalid_date">Invalid date format. Use YYYY-MM-DD</string>
     <string name="dialog_confirm">Confirm</string>
-=======
+=
     <!-- Login Screen -->
     <string name="login_title">Sign In</string>
     <string name="login_subtitle">Enter your credentials to access your account</string>
