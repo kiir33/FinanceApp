@@ -1,5 +1,6 @@
 package com.example.financeapp.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,7 +50,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.draw.clip
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.withContext
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -74,8 +81,9 @@ fun UserManagementScreen(
 ) {
     val context = LocalContext.current
     val viewModel: BankViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-    val authService = AuthService.getInstance(context.applicationContext)
-    val allUsers = viewModel.allUsers.collectAsStateWithLifecycle()
+    val authService = remember { AuthService.getInstance(context.applicationContext as android.app.Application) }
+    val allUsers by viewModel.allUsers.collectAsStateWithLifecycle()
+    val allClients by viewModel.allClients.collectAsStateWithLifecycle()
 
     var showCreateUserDialog by remember { mutableStateOf(false) }
     var showResetPasswordDialog by remember { mutableStateOf(false) }
@@ -112,42 +120,40 @@ fun UserManagementScreen(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // User list
-                allUsers.value?.let { users ->
-                    if (users.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(R.string.user_management_no_users),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.secondary
+                if (allUsers.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.user_management_no_users),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(allUsers) { user ->
+                            UserListItem(
+                                user = user,
+                                allClients = allClients,
+                                onEdit = { /* Not implemented - could navigate to edit */ },
+                                onResetPassword = {
+                                    selectedUserForReset = user
+                                    showResetPasswordDialog = true
+                                },
+                                onToggleActive = { newActive ->
+                                    toggleUserActive(authService, user, newActive)
+                                },
+                                onUnlock = {
+                                    unlockUser(authService, user)
+                                }
                             )
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(bottom = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(users) { user ->
-                                UserListItem(
-                                    user = user,
-                                    allClients = viewModel.allClients.value ?: emptyList(),
-                                    onEdit = { /* Not implemented - could navigate to edit */ },
-                                    onResetPassword = {
-                                        selectedUserForReset = user
-                                        showResetPasswordDialog = true
-                                    },
-                                    onToggleActive = { newActive ->
-                                        toggleUserActive(user, newActive)
-                                    },
-                                    onUnlock = {
-                                        unlockUser(user)
-                                    }
-                                )
-                            }
                         }
                     }
                 }
@@ -338,7 +344,7 @@ fun CreateUserDialog(
     onSuccess: () -> Unit
 ) {
     val context = LocalContext.current
-    val authService = AuthService.getInstance(context.applicationContext)
+    val authService = remember { AuthService.getInstance(context.applicationContext as android.app.Application) }
 
     var selectedClient by remember { mutableStateOf<Client?>(null) }
     var username by remember { mutableStateOf("") }
@@ -355,15 +361,8 @@ fun CreateUserDialog(
 
     val client = allClients.find { it.id == selectedClient?.id }
 
-    val validateForm = {
-        var valid = true
+    val handleSubmit: () -> Unit = {
         usernameError = if (username.isBlank()) context.getString(R.string.user_mgmt_error_username_required) else null
-        if (username.isNotBlank()) {
-            val existingUser = authService.userDao.getUserByUsername(username)
-            if (existingUser != null) {
-                usernameError = context.getString(R.string.user_mgmt_error_username_exists)
-            }
-        }
         passwordError = when {
             password.isBlank() -> context.getString(R.string.user_mgmt_error_password_required)
             password.length < 8 -> context.getString(R.string.user_mgmt_error_password_length)
@@ -374,46 +373,50 @@ fun CreateUserDialog(
         confirmPasswordError = if (confirmPassword != password) context.getString(R.string.user_mgmt_error_password_mismatch) else null
         if (selectedClient == null) {
             errorMessage = context.getString(R.string.user_mgmt_error_client_required)
-            valid = false
         }
-        valid = usernameError == null && passwordError == null && confirmPasswordError == null && selectedClient != null
-        valid
-    }
 
-    val handleSubmit = {
-        if (!validateForm()) return@handleSubmit
-        isLoading = true
-        errorMessage = null
+        if (usernameError == null && passwordError == null && confirmPasswordError == null && selectedClient != null) {
+            isLoading = true
+            errorMessage = null
 
-        val salt = PasswordHasher.generateSalt()
-        val passwordHash = PasswordHasher.hashPassword(password, salt)
+            val salt = PasswordHasher.generateSalt()
+            val passwordHash = PasswordHasher.hashPassword(password, salt)
 
-        val newUser = User(
-            username = username,
-            passwordHash = passwordHash,
-            salt = salt,
-            role = SessionManager.ROLE_MEMBER,
-            clientId = selectedClient?.id,
-            isActive = true,
-            failedAttempts = 0,
-            lockedUntil = null,
-            mustChangePassword = true,
-            createdAt = System.currentTimeMillis(),
-            lastLoginAt = null
-        )
+            val newUser = User(
+                username = username,
+                passwordHash = passwordHash,
+                salt = salt,
+                role = SessionManager.ROLE_MEMBER,
+                clientId = selectedClient?.id,
+                isActive = true,
+                failedAttempts = 0,
+                lockedUntil = null,
+                mustChangePassword = true,
+                createdAt = System.currentTimeMillis(),
+                lastLoginAt = null
+            )
 
-        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-            val userId = authService.userDao.insertUser(newUser)
-            // Audit log
-            authService.auditLogDao.insertAuditLog(com.example.financeapp.database.entities.AuditLog(
-                userId = SessionManager.currentSession.value?.userId ?: 1,
-                username = SessionManager.currentSession.value?.username ?: "admin",
-                action = "USER_CREATED",
-                details = "Created member login for ${selectedClient?.name} (username: $username)"
-            ))
-            androidx.compose.runtime.Snapshot.withMutableSnapshot {
-                isLoading = false
-                onSuccess()
+            kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                val existingUser = authService.userDao.getUserByUsername(username)
+                if (existingUser != null) {
+                    withContext(Dispatchers.Main) {
+                        usernameError = context.getString(R.string.user_mgmt_error_username_exists)
+                        isLoading = false
+                    }
+                    return@launch
+                }
+
+                authService.userDao.insertUser(newUser)
+                authService.auditLogDao.insertAuditLog(com.example.financeapp.database.entities.AuditLog(
+                    userId = SessionManager.currentSession.value?.userId ?: 1,
+                    username = SessionManager.currentSession.value?.username ?: "admin",
+                    action = "USER_CREATED",
+                    details = "Created member login for ${selectedClient?.name} (username: $username)"
+                ))
+                withContext(Dispatchers.Main) {
+                    isLoading = false
+                    onSuccess()
+                }
             }
         }
     }
@@ -427,27 +430,27 @@ fun CreateUserDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Client dropdown
-                androidx.compose.material3.ExposedDropdownMenuBox(
+                ExposedDropdownMenuBox(
                     expanded = clientDropdownExpanded,
                     onExpandedChange = { clientDropdownExpanded = it }
                 ) {
                     androidx.compose.material3.OutlinedTextField(
-                        value = selectedClient?.name ?: stringResource(R.string.user_mgmt_select_client),
+                        value = selectedClient?.name ?: stringResource(R.string.user_management_select_client),
                         onValueChange = {},
                         label = { Text(stringResource(R.string.user_mgmt_client_label)) },
                         readOnly = true,
                         trailingIcon = {
-                            androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(expanded = clientDropdownExpanded)
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = clientDropdownExpanded)
                         },
                         modifier = Modifier.fillMaxWidth().menuAnchor()
                     )
-                    androidx.compose.material3.ExposedDropdownMenu(
+                    ExposedDropdownMenu(
                         expanded = clientDropdownExpanded,
                         onDismissRequest = { clientDropdownExpanded = false }
                     ) {
                         allClients.forEach { c ->
-                            androidx.compose.material3.DropdownMenuItem(
-                                text = { Text(stringResource(R.string.user_mgmt_client_format, c.name, c.clientId)) },
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.user_management_client_format, c.name, c.clientId)) },
                                 onClick = {
                                     selectedClient = c
                                     // Auto-generate username from name
@@ -545,7 +548,7 @@ fun ResetPasswordDialog(
     onSuccess: () -> Unit
 ) {
     val context = LocalContext.current
-    val authService = AuthService.getInstance(context.applicationContext)
+    val authService = remember { AuthService.getInstance(context.applicationContext as android.app.Application) }
 
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -557,7 +560,6 @@ fun ResetPasswordDialog(
     var confirmPasswordError by remember { mutableStateOf<String?>(null) }
 
     val validateForm = {
-        var valid = true
         newPasswordError = when {
             newPassword.isBlank() -> context.getString(R.string.user_mgmt_error_password_required)
             newPassword.length < 8 -> context.getString(R.string.user_mgmt_error_password_length)
@@ -566,37 +568,37 @@ fun ResetPasswordDialog(
             else -> null
         }
         confirmPasswordError = if (confirmPassword != newPassword) context.getString(R.string.user_mgmt_error_password_mismatch) else null
-        valid = newPasswordError == null && confirmPasswordError == null
-        valid
+        newPasswordError == null && confirmPasswordError == null
     }
 
-    val handleSubmit = {
-        if (!validateForm()) return@handleSubmit
-        isLoading = true
-        errorMessage = null
+    val handleSubmit: () -> Unit = {
+        if (validateForm()) {
+            isLoading = true
+            errorMessage = null
 
-        val salt = PasswordHasher.generateSalt()
-        val passwordHash = PasswordHasher.hashPassword(newPassword, salt)
+            val salt = PasswordHasher.generateSalt()
+            val passwordHash = PasswordHasher.hashPassword(newPassword, salt)
 
-        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-            val updatedUser = user.copy(
-                passwordHash = passwordHash,
-                salt = salt,
-                mustChangePassword = true,
-                failedAttempts = 0,
-                lockedUntil = null
-            )
-            authService.userDao.updateUser(updatedUser)
-            // Audit log
-            authService.auditLogDao.insertAuditLog(com.example.financeapp.database.entities.AuditLog(
-                userId = SessionManager.currentSession.value?.userId ?: 1,
-                username = SessionManager.currentSession.value?.username ?: "admin",
-                action = "PASSWORD_RESET_BY_ADMIN",
-                details = "Admin reset password for user ${user.username} (mustChangePassword=true)"
-            ))
-            androidx.compose.runtime.Snapshot.withMutableSnapshot {
-                isLoading = false
-                onSuccess()
+            kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                val updatedUser = user.copy(
+                    passwordHash = passwordHash,
+                    salt = salt,
+                    mustChangePassword = true,
+                    failedAttempts = 0,
+                    lockedUntil = null
+                )
+                authService.userDao.updateUser(updatedUser)
+                // Audit log
+                authService.auditLogDao.insertAuditLog(com.example.financeapp.database.entities.AuditLog(
+                    userId = SessionManager.currentSession.value?.userId ?: 1,
+                    username = SessionManager.currentSession.value?.username ?: "admin",
+                    action = "PASSWORD_RESET_BY_ADMIN",
+                    details = "Admin reset password for user ${user.username} (mustChangePassword=true)"
+                ))
+                withContext(Dispatchers.Main) {
+                    isLoading = false
+                    onSuccess()
+                }
             }
         }
     }
@@ -681,10 +683,7 @@ fun ResetPasswordDialog(
     )
 }
 
-private fun toggleUserActive(user: User, newActive: Boolean) {
-    val context = LocalContext.current
-    val authService = AuthService.getInstance(context.applicationContext)
-
+private fun toggleUserActive(authService: AuthService, user: User, newActive: Boolean) {
     kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
         val updatedUser = user.copy(isActive = newActive)
         authService.userDao.updateUser(updatedUser)
@@ -698,10 +697,7 @@ private fun toggleUserActive(user: User, newActive: Boolean) {
     }
 }
 
-private fun unlockUser(user: User) {
-    val context = LocalContext.current
-    val authService = AuthService.getInstance(context.applicationContext)
-
+private fun unlockUser(authService: AuthService, user: User) {
     kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
         val updatedUser = user.copy(failedAttempts = 0, lockedUntil = null)
         authService.userDao.updateUser(updatedUser)

@@ -612,33 +612,35 @@ class CsvImporter(
 
     // --- Username Generation (Section 8.3.A) ---
 
-    private fun generateBaseUsername(fullName: String): String {
-        val slug = fullName.trim()
-            .lowercase(Locale.getDefault())
-            .replace(Regex("[^a-z0-9]+"), "_")
-            .trim('_')
-            .takeIf { it.isNotEmpty() } ?: "member"
-        return slug
-    }
-
-    private fun generateUniqueUsername(baseUsername: String, memberId: Int, existingUsernames: Set<String>): String {
-        return if (!existingUsernames.contains(baseUsername)) {
-            baseUsername
-        } else {
-            "${baseUsername}_$memberId"
+    companion object {
+        fun generateBaseUsername(fullName: String): String {
+            val slug = fullName.trim()
+                .lowercase(Locale.getDefault())
+                .replace(Regex("[^a-z0-9]+"), "_")
+                .trim('_')
+                .takeIf { it.isNotEmpty() } ?: "member"
+            return slug
         }
-    }
 
-    private fun generateUsernamesForPreview(members: List<MemberRow>, existingUsernames: Set<String>): Map<Int, String> {
-        val result = mutableMapOf<Int, String>()
-        val used = existingUsernames.toMutableSet()
-        for (member in members) {
-            val base = generateBaseUsername(member.fullName)
-            val username = generateUniqueUsername(base, member.memberId, used)
-            used.add(username)
-            result[member.memberId] = username
+        fun generateUniqueUsername(baseUsername: String, memberId: Int, existingUsernames: Set<String>): String {
+            return if (!existingUsernames.contains(baseUsername)) {
+                baseUsername
+            } else {
+                "${baseUsername}_$memberId"
+            }
         }
-        return result
+
+        fun generateUsernamesForPreview(members: List<MemberRow>, existingUsernames: Set<String>): Map<Int, String> {
+            val result = mutableMapOf<Int, String>()
+            val used = existingUsernames.toMutableSet()
+            for (member in members) {
+                val base = generateBaseUsername(member.fullName)
+                val username = generateUniqueUsername(base, member.memberId, used)
+                used.add(username)
+                result[member.memberId] = username
+            }
+            return result
+        }
     }
 
     private fun generateCredentialsSheet(rows: List<String>): String {

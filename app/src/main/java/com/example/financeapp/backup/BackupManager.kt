@@ -2,26 +2,34 @@ package com.example.financeapp.backup
 
 import android.content.Context
 import android.net.Uri
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleObserver
-import androidx.lifecycle.OnLifecycleEvent
+import androidx.room.withTransaction
 import com.example.financeapp.database.AppDatabase
 import com.example.financeapp.database.entities.AuditLog
 import com.example.financeapp.database.entities.Client
 import com.example.financeapp.database.entities.GroupAccount
 import com.example.financeapp.database.entities.GroupTransaction
+import com.example.financeapp.database.entities.GroupTxType
 import com.example.financeapp.database.entities.Loan
 import com.example.financeapp.database.entities.LoanRepayment
 import com.example.financeapp.database.entities.SavingsAccount
 import com.example.financeapp.database.entities.SavingsTransaction
 import com.example.financeapp.database.entities.User
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.DecodingException
-import kotlinx.serialization.EncodingException
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
+import kotlinx.serialization.json.put
 import java.io.ByteArrayOutputStream
 import java.io.ByteArrayInputStream
 import java.io.OutputStream
@@ -29,11 +37,13 @@ import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 
 sealed interface BackupResult {
     data object Success : BackupResult
-    data class Failure(val message: String, val exception: Throwable? = null) : BackupResult
+    data class Failure(val message: String, val exception: Throwable? = null) : BackupResult {
         override fun toString(): String = "Failure: $message${exception?.let { " (${it.message})" } ?: ""}"
+    }
 }
 
 class BackupManager(private val context: Context) {
@@ -95,7 +105,7 @@ class BackupManager(private val context: Context) {
         return withContext(Dispatchers.IO) {
             val clients = db.clientDao().getAllClients().first()
             val savingsAccounts = db.savingsDao().getAllSavingsAccounts().first()
-            val savingsTransactions = db.savingsDao().getAllSavingsAccounts().first().flatMap { account ->
+            val savingsTransactions = savingsAccounts.flatMap { account ->
                 db.savingsDao().getTransactionsByAccountId(account.id).first()
             }
             val loans = db.loanDao().getAllLoans().first()
@@ -103,124 +113,126 @@ class BackupManager(private val context: Context) {
                 db.loanDao().getRepaymentsByLoanId(loan.id).first()
             }
             val users = db.userDao().getAllUsers().first()
-            val groupAccount = db.groupAccountDao().getGroupAccountById().first()
+            val groupAccount = db.groupAccountDao().getGroupAccountById()
             val groupTransactions = db.groupTransactionDao().getAllTransactions().first()
             val auditLogs = db.auditLogDao().getAllAuditLogs().first()
 
-            val jsonObj = jsonObject(
-                "version" to 1,
-                "exportedAt" to System.currentTimeMillis(),
-                "clients" to jsonArray { clients.forEach { c -> addClient(c) } },
-                "savingsAccounts" to jsonArray { savingsAccounts.forEach { s -> addSavingsAccount(s) } },
-                "savingsTransactions" to jsonArray { savingsTransactions.forEach { t -> addSavingsTransaction(t) } },
-                "loans" to jsonArray { loans.forEach { l -> addLoan(l) } },
-                "loanRepayments" to jsonArray { loanRepayments.forEach { r -> addLoanRepayment(r) } },
-                "users" to jsonArray { users.forEach { u -> addUser(u) } },
-                "groupAccount" to groupAccount?.let { addGroupAccount(it) },
-                "groupTransactions" to jsonArray { groupTransactions.forEach { gt -> addGroupTransaction(gt) } },
-                "auditLogs" to jsonArray { auditLogs.forEach { al -> addAuditLog(al) } }
-            )
-            json.encodeToString(jsonObj.serializer(), jsonObj)
+            val jsonObj = buildJsonObject {
+                put("version", 1)
+                put("exportedAt", System.currentTimeMillis())
+                put("clients", buildJsonArray { clients.forEach { add(addClient(it)) } })
+                put("savingsAccounts", buildJsonArray { savingsAccounts.forEach { add(addSavingsAccount(it)) } })
+                put("savingsTransactions", buildJsonArray { savingsTransactions.forEach { add(addSavingsTransaction(it)) } })
+                put("loans", buildJsonArray { loans.forEach { add(addLoan(it)) } })
+                put("loanRepayments", buildJsonArray { loanRepayments.forEach { add(addLoanRepayment(it)) } })
+                put("users", buildJsonArray { users.forEach { add(addUser(it)) } })
+                if (groupAccount != null) {
+                    put("groupAccount", addGroupAccount(groupAccount))
+                }
+                put("groupTransactions", buildJsonArray { groupTransactions.forEach { add(addGroupTransaction(it)) } })
+                put("auditLogs", buildJsonArray { auditLogs.forEach { add(addAuditLog(it)) } })
+            }
+            json.encodeToString(JsonObject.serializer(), jsonObj)
         }
     }
 
     // JSON serialization helpers
-    private fun addClient(c: Client) = jsonObject(
-        "id" to c.id,
-        "clientId" to c.clientId,
-        "name" to c.name,
-        "phoneNumber" to c.phoneNumber,
-        "address" to c.address,
-        "createdAt" to c.createdAt
-    )
+    private fun addClient(c: Client): JsonObject = buildJsonObject {
+        put("id", c.id)
+        put("clientId", c.clientId)
+        put("name", c.name)
+        put("phoneNumber", c.phoneNumber)
+        put("address", c.address)
+        put("createdAt", c.createdAt)
+    }
 
-    private fun addSavingsAccount(s: SavingsAccount) = jsonObject(
-        "id" to s.id,
-        "clientId" to s.clientId,
-        "accountNumber" to s.accountNumber,
-        "balance" to s.balance,
-        "createdAt" to s.createdAt
-    )
+    private fun addSavingsAccount(s: SavingsAccount): JsonObject = buildJsonObject {
+        put("id", s.id)
+        put("clientId", s.clientId)
+        put("accountNumber", s.accountNumber)
+        put("balance", s.balance)
+        put("createdAt", s.createdAt)
+    }
 
-    private fun addSavingsTransaction(t: SavingsTransaction) = jsonObject(
-        "id" to t.id,
-        "accountId" to t.accountId,
-        "amount" to t.amount,
-        "type" to t.type,
-        "description" to t.description,
-        "transactionDate" to t.transactionDate,
-        "timestamp" to t.timestamp
-    )
+    private fun addSavingsTransaction(t: SavingsTransaction): JsonObject = buildJsonObject {
+        put("id", t.id)
+        put("accountId", t.accountId)
+        put("amount", t.amount)
+        put("type", t.type)
+        put("description", t.description)
+        put("transactionDate", t.transactionDate)
+        put("timestamp", t.timestamp)
+    }
 
-    private fun addLoan(l: Loan) = jsonObject(
-        "id" to l.id,
-        "clientId" to l.clientId,
-        "guarantorId" to l.guarantorId,
-        "amount" to l.amount,
-        "interestRate" to l.interestRate,
-        "tenureMonths" to l.tenureMonths,
-        "outstandingBalance" to l.outstandingBalance,
-        "status" to l.status,
-        "loanDate" to l.loanDate,
-        "createdAt" to l.createdAt
-    )
+    private fun addLoan(l: Loan): JsonObject = buildJsonObject {
+        put("id", l.id)
+        put("clientId", l.clientId)
+        if (l.guarantorId != null) put("guarantorId", l.guarantorId)
+        put("amount", l.amount)
+        put("interestRate", l.interestRate)
+        put("tenureMonths", l.tenureMonths)
+        put("outstandingBalance", l.outstandingBalance)
+        put("status", l.status)
+        put("loanDate", l.loanDate)
+        put("createdAt", l.createdAt)
+    }
 
-    private fun addLoanRepayment(r: LoanRepayment) = jsonObject(
-        "id" to r.id,
-        "loanId" to r.loanId,
-        "amount" to r.amount,
-        "principalPaid" to r.principalPaid,
-        "interestPaid" to r.interestPaid,
-        "timestamp" to r.timestamp
-    )
+    private fun addLoanRepayment(r: LoanRepayment): JsonObject = buildJsonObject {
+        put("id", r.id)
+        put("loanId", r.loanId)
+        put("amount", r.amount)
+        put("principalPaid", r.principalPaid)
+        put("interestPaid", r.interestPaid)
+        put("timestamp", r.timestamp)
+    }
 
-    private fun addUser(u: User) = jsonObject(
-        "id" to u.id,
-        "username" to u.username,
-        "passwordHash" to u.passwordHash,
-        "salt" to u.salt,
-        "role" to u.role,
-        "clientId" to u.clientId,
-        "isActive" to u.isActive,
-        "failedAttempts" to u.failedAttempts,
-        "lockedUntil" to u.lockedUntil,
-        "mustChangePassword" to u.mustChangePassword,
-        "createdAt" to u.createdAt,
-        "lastLoginAt" to u.lastLoginAt
-    )
+    private fun addUser(u: User): JsonObject = buildJsonObject {
+        put("id", u.id)
+        put("username", u.username)
+        put("passwordHash", u.passwordHash)
+        put("salt", u.salt)
+        put("role", u.role)
+        if (u.clientId != null) put("clientId", u.clientId)
+        put("isActive", u.isActive)
+        put("failedAttempts", u.failedAttempts)
+        if (u.lockedUntil != null) put("lockedUntil", u.lockedUntil)
+        put("mustChangePassword", u.mustChangePassword)
+        put("createdAt", u.createdAt)
+        if (u.lastLoginAt != null) put("lastLoginAt", u.lastLoginAt)
+    }
 
-    private fun addGroupAccount(g: GroupAccount) = jsonObject(
-        "id" to g.id,
-        "name" to g.name,
-        "cashBalance" to g.cashBalance,
-        "bankBalance" to g.bankBalance,
-        "bankName" to g.bankName,
-        "bankAccountNumber" to g.bankAccountNumber,
-        "lastUpdated" to g.lastUpdated
-    )
+    private fun addGroupAccount(g: GroupAccount): JsonObject = buildJsonObject {
+        put("id", g.id)
+        put("name", g.name)
+        put("cashBalance", g.cashBalance)
+        put("bankBalance", g.bankBalance)
+        if (g.bankName != null) put("bankName", g.bankName)
+        if (g.bankAccountNumber != null) put("bankAccountNumber", g.bankAccountNumber)
+        put("lastUpdated", g.lastUpdated)
+    }
 
-    private fun addGroupTransaction(gt: GroupTransaction) = jsonObject(
-        "id" to gt.id,
-        "type" to gt.type,
-        "amount" to gt.amount,
-        "channel" to gt.channel,
-        "description" to gt.description,
-        "relatedClientId" to gt.relatedClientId,
-        "relatedLoanId" to gt.relatedLoanId,
-        "relatedSavingsAccountId" to gt.relatedSavingsAccountId,
-        "recordedByUserId" to gt.recordedByUserId,
-        "transactionDate" to gt.transactionDate,
-        "createdAt" to gt.createdAt
-    )
+    private fun addGroupTransaction(gt: GroupTransaction): JsonObject = buildJsonObject {
+        put("id", gt.id)
+        put("type", gt.type)
+        put("amount", gt.amount)
+        put("channel", gt.channel)
+        put("description", gt.description)
+        if (gt.relatedClientId != null) put("relatedClientId", gt.relatedClientId)
+        if (gt.relatedLoanId != null) put("relatedLoanId", gt.relatedLoanId)
+        if (gt.relatedSavingsAccountId != null) put("relatedSavingsAccountId", gt.relatedSavingsAccountId)
+        if (gt.recordedByUserId != null) put("recordedByUserId", gt.recordedByUserId)
+        put("transactionDate", gt.transactionDate)
+        put("createdAt", gt.createdAt)
+    }
 
-    private fun addAuditLog(al: AuditLog) = jsonObject(
-        "id" to al.id,
-        "userId" to al.userId,
-        "username" to al.username,
-        "action" to al.action,
-        "details" to al.details,
-        "timestamp" to al.timestamp
-    )
+    private fun addAuditLog(al: AuditLog): JsonObject = buildJsonObject {
+        put("id", al.id)
+        put("userId", al.userId)
+        put("username", al.username)
+        put("action", al.action)
+        put("details", al.details)
+        put("timestamp", al.timestamp)
+    }
 
     // --- Import / Restore ---
 
@@ -245,8 +257,8 @@ class BackupManager(private val context: Context) {
 
                 // 2. Parse and validate JSON
                 val jsonObj = try {
-                    json.decodeFromString(kotlinx.serialization.json.JsonObject.serializer(), jsonString)
-                } catch (e: DecodingException) {
+                    json.decodeFromString(JsonObject.serializer(), jsonString)
+                } catch (e: SerializationException) {
                     return@withContext BackupResult.Failure("Invalid backup file format: ${e.message}", e)
                 }
 
@@ -257,9 +269,8 @@ class BackupManager(private val context: Context) {
                 }
 
                 // 4. Restore in single transaction
-                db.runInTransaction {
-                    // Clear all tables in dependency order (children first)
-                    clearAllTables(db)
+                db.withTransaction {
+                    db.clearAllTables()
 
                     // Restore data
                     restoreClients(db, jsonObj)
@@ -299,21 +310,8 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    private fun clearAllTables(db: AppDatabase) {
-        // Delete in reverse dependency order
-        db.auditLogDao().deleteAll()
-        db.groupTransactionDao().deleteAll()
-        db.groupAccountDao().deleteAll()
-        db.userDao().deleteAll()
-        db.loanDao().deleteAllRepayments()
-        db.loanDao().deleteAllLoans()
-        db.savingsDao().deleteAllTransactions()
-        db.savingsDao().deleteAllAccounts()
-        db.clientDao().deleteAllClients()
-    }
-
     // Restore methods
-    private fun restoreClients(db: AppDatabase, json: kotlinx.serialization.json.JsonObject) {
+    private suspend fun restoreClients(db: AppDatabase, json: JsonObject) {
         val arr = json["clients"]?.jsonArray ?: return
         for (elem in arr) {
             val obj = elem.jsonObject
@@ -329,7 +327,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    private fun restoreSavingsAccounts(db: AppDatabase, json: kotlinx.serialization.json.JsonObject) {
+    private suspend fun restoreSavingsAccounts(db: AppDatabase, json: JsonObject) {
         val arr = json["savingsAccounts"]?.jsonArray ?: return
         for (elem in arr) {
             val obj = elem.jsonObject
@@ -344,7 +342,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    private fun restoreSavingsTransactions(db: AppDatabase, json: kotlinx.serialization.json.JsonObject) {
+    private suspend fun restoreSavingsTransactions(db: AppDatabase, json: JsonObject) {
         val arr = json["savingsTransactions"]?.jsonArray ?: return
         for (elem in arr) {
             val obj = elem.jsonObject
@@ -361,7 +359,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    private fun restoreLoans(db: AppDatabase, json: kotlinx.serialization.json.JsonObject) {
+    private suspend fun restoreLoans(db: AppDatabase, json: JsonObject) {
         val arr = json["loans"]?.jsonArray ?: return
         for (elem in arr) {
             val obj = elem.jsonObject
@@ -381,7 +379,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    private fun restoreLoanRepayments(db: AppDatabase, json: kotlinx.serialization.json.JsonObject) {
+    private suspend fun restoreLoanRepayments(db: AppDatabase, json: JsonObject) {
         val arr = json["loanRepayments"]?.jsonArray ?: return
         for (elem in arr) {
             val obj = elem.jsonObject
@@ -397,7 +395,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    private fun restoreUsers(db: AppDatabase, json: kotlinx.serialization.json.JsonObject) {
+    private suspend fun restoreUsers(db: AppDatabase, json: JsonObject) {
         val arr = json["users"]?.jsonArray ?: return
         for (elem in arr) {
             val obj = elem.jsonObject
@@ -419,7 +417,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    private fun restoreGroupAccount(db: AppDatabase, json: kotlinx.serialization.json.JsonObject) {
+    private suspend fun restoreGroupAccount(db: AppDatabase, json: JsonObject) {
         val obj = json["groupAccount"]?.jsonObject ?: return
         val account = GroupAccount(
             id = obj["id"]?.jsonPrimitive?.long ?: 1,
@@ -433,13 +431,15 @@ class BackupManager(private val context: Context) {
         db.groupAccountDao().insertGroupAccount(account)
     }
 
-    private fun restoreGroupTransactions(db: AppDatabase, json: kotlinx.serialization.json.JsonObject) {
+    private suspend fun restoreGroupTransactions(db: AppDatabase, json: JsonObject) {
         val arr = json["groupTransactions"]?.jsonArray ?: return
         for (elem in arr) {
             val obj = elem.jsonObject
+            val typeStr = obj["type"]?.jsonPrimitive?.content ?: GroupTxType.EXPENSE.name
+            val type = try { GroupTxType.valueOf(typeStr) } catch (e: Exception) { GroupTxType.EXPENSE }
             val tx = GroupTransaction(
                 id = obj["id"]?.jsonPrimitive?.long ?: 0,
-                type = obj["type"]?.jsonPrimitive?.content ?: "",
+                type = typeStr,
                 amount = obj["amount"]?.jsonPrimitive?.double ?: 0.0,
                 channel = obj["channel"]?.jsonPrimitive?.content ?: "",
                 description = obj["description"]?.jsonPrimitive?.content ?: "",
@@ -454,7 +454,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    private fun restoreAuditLogs(db: AppDatabase, json: kotlinx.serialization.json.JsonObject) {
+    private suspend fun restoreAuditLogs(db: AppDatabase, json: JsonObject) {
         val arr = json["auditLogs"]?.jsonArray ?: return
         for (elem in arr) {
             val obj = elem.jsonObject
@@ -478,7 +478,7 @@ class BackupManager(private val context: Context) {
         val stats: Map<String, Int>
     )
 
-    private fun verifyIntegrity(db: AppDatabase): IntegrityResult {
+    private suspend fun verifyIntegrity(db: AppDatabase): IntegrityResult {
         val errors = mutableListOf<String>()
         val stats = mutableMapOf<String, Int>()
 
@@ -502,15 +502,15 @@ class BackupManager(private val context: Context) {
         val totalOutstandingLoans = db.loanDao().getTotalOutstandingLoans().first() ?: 0.0
 
         // Verify savings balance matches transaction sum
-        val savingsFromTx = db.savingsDao().getAllSavingsAccounts().first().sumOf { account ->
-            db.savingsDao().getTransactionsByAccountId(account.id).first().sumOf { it.amount }
+        val savingsFromTx = db.savingsDao().getAllSavingsAccounts().first().sumOf { account: SavingsAccount ->
+            db.savingsDao().getTransactionsByAccountId(account.id).first().sumOf { tx: SavingsTransaction -> tx.amount }
         }
-        if (Math.abs(totalSavingsBalance - savingsFromTx) > 0.01) {
+        if (abs(totalSavingsBalance - savingsFromTx) > 0.01) {
             errors.add("Savings balance mismatch: accounts sum=$totalSavingsBalance, transactions sum=$savingsFromTx")
         }
 
         // Verify group account exists
-        val groupAccount = db.groupAccountDao().getGroupAccountById().first()
+        val groupAccount = db.groupAccountDao().getGroupAccountById()
         if (groupAccount == null) {
             errors.add("Group account missing after restore")
         }
@@ -630,19 +630,19 @@ class BackupManager(private val context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 // 1. Download backup from Drive
-                val downloadResult = driveClient.downloadBackup(fileId)
-                if (downloadResult is GoogleDriveClient.DriveResult.Failure) {
-                    return@withContext BackupResult.Failure("Download failed: ${downloadResult.message}", downloadResult.exception)
+                val downloadData = when (val downloadResult = driveClient.downloadBackup(fileId)) {
+                    is GoogleDriveClient.DriveResult.Success -> downloadResult.data
+                    is GoogleDriveClient.DriveResult.Failure -> return@withContext BackupResult.Failure("Download failed: ${downloadResult.message}", downloadResult.exception)
                 }
 
                 // 2. Decrypt and restore using existing import logic
-                val inputStream = ByteArrayInputStream(downloadResult.data)
+                val inputStream = ByteArrayInputStream(downloadData)
                 val jsonString = BackupCryptoEngine.decryptPayload(inputStream, passphrase)
 
                 // 3. Parse and validate JSON
                 val jsonObj = try {
-                    json.decodeFromString(kotlinx.serialization.json.JsonObject.serializer(), jsonString)
-                } catch (e: DecodingException) {
+                    json.decodeFromString(JsonObject.serializer(), jsonString)
+                } catch (e: SerializationException) {
                     return@withContext BackupResult.Failure("Invalid backup file format: ${e.message}", e)
                 }
 
@@ -653,8 +653,8 @@ class BackupManager(private val context: Context) {
                 }
 
                 // 5. Restore in single transaction
-                db.runInTransaction {
-                    clearAllTables(db)
+                db.withTransaction {
+                    db.clearAllTables()
                     restoreClients(db, jsonObj)
                     restoreSavingsAccounts(db, jsonObj)
                     restoreSavingsTransactions(db, jsonObj)

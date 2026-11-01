@@ -5,6 +5,8 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
@@ -49,15 +53,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.financeapp.R
+import com.example.financeapp.database.AppDatabase
 import com.example.financeapp.importer.CsvImporter
 import com.example.financeapp.importer.DryRunResult
 import com.example.financeapp.importer.ImportResult
@@ -66,10 +74,19 @@ import com.example.financeapp.importer.ValidationError
 import com.example.financeapp.ui.main.BankViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+enum class ImportStep {
+    SELECT_TEMPLATE,
+    SELECT_FILES,
+    VALIDATION_ERRORS,
+    PREVIEW,
+    SUCCESS
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,20 +96,16 @@ fun CsvImportScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val csvImporter = CsvImporter(
-        clientDao = viewModel.repository.clientDao,
-        savingsDao = viewModel.repository.savingsDao,
-        loanDao = viewModel.repository.loanDao,
-        userDao = viewModel.repository.userDao,
-        db = viewModel.db
-    )
-
-    enum class ImportStep {
-        SELECT_TEMPLATE,
-        SELECT_FILES,
-        VALIDATION_ERRORS,
-        PREVIEW,
-        SUCCESS
+    val coroutineScope = rememberCoroutineScope()
+    val db = remember { AppDatabase.getDatabase(context.applicationContext) }
+    val csvImporter = remember {
+        CsvImporter(
+            clientDao = db.clientDao(),
+            savingsDao = db.savingsDao(),
+            loanDao = db.loanDao(),
+            userDao = db.userDao(),
+            db = db
+        )
     }
 
     var currentStep by remember { mutableStateOf(ImportStep.SELECT_TEMPLATE) }
@@ -104,6 +117,67 @@ fun CsvImportScreen(
     var importResult by remember { mutableStateOf<ImportResult?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val runDryRun: () -> Unit = {
+        if (membersFileUri == null) {
+            errorMessage = context.getString(R.string.csv_import_error_members_required)
+        } else {
+            isLoading = true
+            errorMessage = null
+
+            coroutineScope.launch {
+                val result = withContext(Dispatchers.IO) {
+                    val membersStream = context.contentResolver.openInputStream(membersFileUri!!)
+                    val savingsStream = savingsFileUri?.let { context.contentResolver.openInputStream(it) }
+                    val loansStream = loansFileUri?.let { context.contentResolver.openInputStream(it) }
+                    csvImporter.dryRun(membersStream!!, savingsStream, loansStream)
+                }
+                isLoading = false
+                dryRunResult = result
+                if (result.isValid) {
+                    currentStep = ImportStep.PREVIEW
+                } else {
+                    currentStep = ImportStep.VALIDATION_ERRORS
+                }
+            }
+        }
+    }
+
+    val runCommit: () -> Unit = {
+        isLoading = true
+
+        coroutineScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                val membersStream = context.contentResolver.openInputStream(membersFileUri!!)
+                val savingsStream = savingsFileUri?.let { context.contentResolver.openInputStream(it) }
+                val loansStream = loansFileUri?.let { context.contentResolver.openInputStream(it) }
+                csvImporter.commit(membersStream!!, savingsStream, loansStream)
+            }
+            isLoading = false
+            importResult = result
+            if (result.success) {
+                currentStep = ImportStep.SUCCESS
+            } else {
+                errorMessage = result.message
+            }
+        }
+    }
+
+    val downloadTemplate: (Uri, TemplateType) -> Unit = { uri, template ->
+        coroutineScope.launch {
+            withContext(Dispatchers.IO) {
+                val content = when (template) {
+                    TemplateType.MEMBERS -> csvImporter.getMembersTemplate()
+                    TemplateType.SAVINGS -> csvImporter.getSavingsTemplate()
+                    TemplateType.LOANS -> csvImporter.getLoansTemplate()
+                }
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(content.toByteArray())
+                }
+            }
+            Toast.makeText(context, context.getString(R.string.csv_import_template_downloaded, template.displayName), Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // File pickers
     val membersFilePicker = rememberLauncherForActivityResult(
@@ -226,75 +300,6 @@ fun CsvImportScreen(
                         importResult = null
                     }
                 )
-            }
-        }
-    }
-
-    fun runDryRun() {
-        if (membersFileUri == null) {
-            errorMessage = context.getString(R.string.csv_import_error_members_required)
-            return
-        }
-
-        isLoading = true
-        errorMessage = null
-
-        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-            val membersStream = context.contentResolver.openInputStream(membersFileUri!!)
-            val savingsStream = savingsFileUri?.let { context.contentResolver.openInputStream(it) }
-            val loansStream = loansFileUri?.let { context.contentResolver.openInputStream(it) }
-
-            val result = csvImporter.dryRun(membersStream!!, savingsStream, loansStream)
-
-            androidx.compose.runtime.Snapshot.withMutableSnapshot {
-                isLoading = false
-                dryRunResult = result
-                if (result.isValid) {
-                    currentStep = ImportStep.PREVIEW
-                } else {
-                    currentStep = ImportStep.VALIDATION_ERRORS
-                }
-            }
-        }
-    }
-
-    fun runCommit() {
-        isLoading = true
-
-        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-            val membersStream = context.contentResolver.openInputStream(membersFileUri!!)
-            val savingsStream = savingsFileUri?.let { context.contentResolver.openInputStream(it) }
-            val loansStream = loansFileUri?.let { context.contentResolver.openInputStream(it) }
-
-            val result = csvImporter.commit(membersStream!!, savingsStream, loansStream)
-
-            androidx.compose.runtime.Snapshot.withMutableSnapshot {
-                isLoading = false
-                importResult = result
-                if (result.success) {
-                    currentStep = ImportStep.SUCCESS
-                } else {
-                    errorMessage = result.message
-                    // Show error dialog
-                }
-            }
-        }
-    }
-
-    fun downloadTemplate(uri: Uri, template: TemplateType) {
-        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-            val content = when (template) {
-                TemplateType.MEMBERS -> csvImporter.getMembersTemplate()
-                TemplateType.SAVINGS -> csvImporter.getSavingsTemplate()
-                TemplateType.LOANS -> csvImporter.getLoansTemplate()
-            }
-            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                outputStream.write(content.toByteArray())
-            }
-            androidx.compose.runtime.Snapshot.withMutableSnapshot {
-                (context as? Activity)?.runOnUiThread {
-                    Toast.makeText(context, context.getString(R.string.csv_import_template_downloaded, template.displayName), Toast.LENGTH_SHORT).show()
-                }
             }
         }
     }
@@ -649,19 +654,22 @@ private fun PreviewScreen(
                 title = stringResource(R.string.csv_import_members_count),
                 value = preview.memberCount.toString(),
                 icon = Icons.Default.Description,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
             )
             PreviewStatCard(
                 title = stringResource(R.string.csv_import_total_savings),
                 value = String.format(Locale.getDefault(), "%,.2f", preview.totalSavingsBalance),
                 icon = Icons.Default.Assessment,
-                color = MaterialTheme.colorScheme.secondary
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.weight(1f)
             )
             PreviewStatCard(
                 title = stringResource(R.string.csv_import_total_loans),
                 value = String.format(Locale.getDefault(), "%,.2f", preview.totalLoanAmount),
                 icon = Icons.Default.AttachMoney,
-                color = MaterialTheme.colorScheme.tertiary
+                color = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.weight(1f)
             )
         }
 
@@ -728,13 +736,13 @@ private fun PreviewScreen(
 private fun PreviewStatCard(
     title: String,
     value: String,
-    icon: androidx.compose.material.icons.filled.Icon,
-    color: androidx.compose.ui.graphics.Color
+    icon: ImageVector,
+    color: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .weight(1f)
             .height(100.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -911,7 +919,7 @@ enum class TemplateType(
     val displayName: String,
     val fileName: String,
     val description: String,
-    val icon: androidx.compose.material.icons.filled.Icon
+    val icon: ImageVector
 ) {
     MEMBERS(
         displayName = "Members",

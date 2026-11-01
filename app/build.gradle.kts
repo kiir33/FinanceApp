@@ -36,6 +36,10 @@ android {
     packaging {
       resources {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        excludes += "META-INF/INDEX.LIST"
+        excludes += "/META-INF/INDEX.LIST"
+        excludes += "META-INF/DEPENDENCIES"
+        excludes += "/META-INF/DEPENDENCIES"
       }
     }
 }
@@ -91,11 +95,20 @@ dependencies {
   implementation(libs.androidx.room.ktx)
   ksp(libs.androidx.room.compiler)
 
+  // Coroutines
+  implementation(libs.kotlinx.coroutines.core)
+  implementation(libs.kotlinx.coroutines.android)
+  implementation(libs.kotlinx.coroutines.play.services)
+
+  // Serialization
+  implementation(libs.kotlinx.serialization.json)
+
   // Biometrics for quick app unlock
   implementation(libs.androidx.biometric)
 
   // Google Drive integration
   implementation(libs.play.services.auth)
   implementation(libs.google.api.client.android)
+  implementation(libs.google.api.client.gson)
   implementation(libs.google.api.services.drive)
 }

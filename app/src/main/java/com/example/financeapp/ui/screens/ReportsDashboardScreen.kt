@@ -4,6 +4,8 @@ import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,11 +20,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filedownload
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.TableChart
@@ -46,13 +48,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,6 +79,7 @@ fun ReportsDashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     var showDateRangeDialog by remember { mutableStateOf(false) }
     var selectedReport: ReportType? by remember { mutableStateOf(null) }
@@ -85,7 +90,10 @@ fun ReportsDashboardScreen(
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri ->
-        uri?.let { exportReport(it, selectedReport!!, fromDate, toDate) }
+        val currentReport = selectedReport
+        if (uri != null && currentReport != null) {
+            exportReport(context, coroutineScope, uri, currentReport, fromDate, toDate)
+        }
     }
 
     Scaffold(
@@ -182,9 +190,15 @@ fun ReportsDashboardScreen(
     }
 }
 
-private fun exportReport(uri: android.net.Uri, report: ReportType, fromDate: Long, toDate: Long) {
-    val context = LocalContext.current
-    kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+private fun exportReport(
+    context: android.content.Context,
+    scope: kotlinx.coroutines.CoroutineScope,
+    uri: android.net.Uri,
+    report: ReportType,
+    fromDate: Long,
+    toDate: Long
+) {
+    scope.launch(Dispatchers.IO) {
         val csvContent = when (report) {
             ReportType.MEMBER_DIRECTORY -> ReportGenerator.generateMemberDirectory(context)
             ReportType.ALL_MEMBERS_SAVINGS_SUMMARY -> ReportGenerator.generateAllMembersSavingsSummary(context)
@@ -198,17 +212,15 @@ private fun exportReport(uri: android.net.Uri, report: ReportType, fromDate: Lon
             ReportType.SYSTEM_AUDIT_TRAIL -> ReportGenerator.generateSystemAuditTrail(context)
         }
 
-        androidx.compose.runtime.Snapshot.withMutableSnapshot {
-            CsvExporter.writeToUri(context, uri, csvContent.split("\r\n").map { it.split(",").toList() })
+        val rows = csvContent.split("\r\n").map { it.split(",").toList() }
+        val result = CsvExporter.writeToUri(context, uri, rows)
+        kotlinx.coroutines.withContext(Dispatchers.Main) {
+            result
                 .onSuccess {
-                    (context as? Activity)?.runOnUiThread {
-                        Toast.makeText(context, context.getString(R.string.reports_export_success, report.displayName), Toast.LENGTH_LONG).show()
-                    }
+                    Toast.makeText(context, context.getString(R.string.reports_export_success, report.displayName), Toast.LENGTH_LONG).show()
                 }
                 .onFailure { e ->
-                    (context as? Activity)?.runOnUiThread {
-                        Toast.makeText(context, context.getString(R.string.reports_export_error, e.message), Toast.LENGTH_LONG).show()
-                    }
+                    Toast.makeText(context, context.getString(R.string.reports_export_error, e.message), Toast.LENGTH_LONG).show()
                 }
         }
     }
@@ -298,15 +310,15 @@ fun DateRangeDialog(
 
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 
-    val handleConfirm = {
+    val handleConfirm: () -> Unit = {
         try {
             val fromMillis = dateFormat.parse(fromStr)?.time ?: fromDate
             val toMillis = dateFormat.parse(toStr)?.time ?: toDate
             if (fromMillis > toMillis) {
                 errorMessage = context.getString(R.string.reports_error_date_range)
-                return@handleConfirm
+            } else {
+                onConfirm(fromMillis, toMillis)
             }
-            onConfirm(fromMillis, toMillis)
         } catch (e: Exception) {
             errorMessage = context.getString(R.string.reports_error_invalid_date)
         }
@@ -373,7 +385,7 @@ enum class ReportType(
     val displayName: String,
     val fileName: String,
     val description: String,
-    val icon: androidx.compose.material.icons.filled.Icon,
+    val icon: ImageVector,
     val needsDateRange: Boolean = false
 ) {
     MEMBER_DIRECTORY(
