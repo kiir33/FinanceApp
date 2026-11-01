@@ -6,6 +6,8 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +51,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
@@ -58,12 +61,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
@@ -122,7 +129,9 @@ fun BackupRestoreScreen(
                 }
             }
         } else {
-            snackbarHostState.showSnackbar("Sign-in cancelled")
+            scope.launch {
+                snackbarHostState.showSnackbar("Sign-in cancelled")
+            }
         }
     }
 
@@ -188,28 +197,29 @@ fun BackupRestoreScreen(
             driveBackupProgress = false
             driveRestoreProgress = false
             when (result) {
-                is BackupRestoreResult.BackupSuccess -> {
+                BackupRestoreResult.BackupSuccess -> {
                     snackbarHostState.showSnackbar(context.getString(R.string.toast_backup_export_success))
                 }
-                is BackupRestoreResult.RestoreSuccess -> {
+                BackupRestoreResult.RestoreSuccess -> {
                     snackbarHostState.showSnackbar(context.getString(R.string.toast_backup_restore_success))
                     (context as? Activity)?.recreate()
                 }
                 is BackupRestoreResult.Failure -> {
                     snackbarHostState.showSnackbar(context.getString(R.string.toast_backup_error, result.message))
                 }
-                is BackupRestoreResult.DriveBackupSuccess -> {
+                BackupRestoreResult.DriveBackupSuccess -> {
                     snackbarHostState.showSnackbar("Backup uploaded to Google Drive")
                     viewModel.refreshDriveBackups()
                 }
-                is BackupRestoreResult.DriveRestoreSuccess -> {
+                BackupRestoreResult.DriveRestoreSuccess -> {
                     snackbarHostState.showSnackbar("Database restored from Google Drive")
                     (context as? Activity)?.recreate()
                 }
-                is BackupRestoreResult.DriveDeleteSuccess -> {
+                BackupRestoreResult.DriveDeleteSuccess -> {
                     snackbarHostState.showSnackbar("Backup deleted from Google Drive")
                     viewModel.refreshDriveBackups()
                 }
+                else -> {}
             }
         }
     }
@@ -230,8 +240,8 @@ fun BackupRestoreScreen(
     LaunchedEffect(Unit) {
         viewModel.driveOperationProgress.collect { progress ->
             when (progress) {
-                is BackupRestoreResult.DriveUploadProgress -> driveBackupProgress = true
-                is BackupRestoreResult.DriveDownloadProgress -> driveRestoreProgress = true
+                BackupRestoreResult.DriveUploadProgress -> driveBackupProgress = true
+                BackupRestoreResult.DriveDownloadProgress -> driveRestoreProgress = true
                 is BackupRestoreResult.DriveDeleteProgress -> {
                     driveDeleteProgress = driveDeleteProgress + progress.fileId
                 }
@@ -240,6 +250,7 @@ fun BackupRestoreScreen(
                     driveRestoreProgress = false
                     driveDeleteProgress = driveDeleteProgress - progress.fileId
                 }
+                else -> {}
             }
         }
     }
@@ -262,6 +273,11 @@ fun BackupRestoreScreen(
         requireConfirmation: Boolean = false,
         isLoading: Boolean = false
     ) {
+        var localPassphrase by remember { mutableStateOf("") }
+        var localConfirmPassphrase by remember { mutableStateOf("") }
+        var localError by remember { mutableStateOf<String?>(null) }
+        var localShowPassphrase by remember { mutableStateOf(false) }
+
         AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(title) },
@@ -273,18 +289,14 @@ fun BackupRestoreScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    var localPassphrase by remember { mutableStateOf(passphrase) }
-                    var localConfirmPassphrase by remember { mutableStateOf(confirmPassphrase) }
-                    var localError by remember { mutableStateOf(passphraseError) }
-                    var localShowPassphrase by remember { mutableStateOf(showPassphrase) }
 
-                    androidx.compose.material3.TextField(
+                    TextField(
                         value = localPassphrase,
-                        onValueChange = { localPassphrase = it },
+                        onValueChange = { localPassphrase = it; localError = null },
                         label = { Text("Passphrase") },
                         placeholder = { Text("Enter passphrase") },
                         singleLine = true,
-                        visualTransformation = if (localShowPassphrase) androidx.compose.foundation.text.CoreTextFieldDefaults.VisualTransformation.None else androidx.compose.foundation.text.PasswordVisualTransformation(),
+                        visualTransformation = if (localShowPassphrase) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { localShowPassphrase = !localShowPassphrase }) {
                                 Icon(
@@ -299,13 +311,13 @@ fun BackupRestoreScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     if (requireConfirmation) {
-                        androidx.compose.material3.TextField(
+                        TextField(
                             value = localConfirmPassphrase,
                             onValueChange = { localConfirmPassphrase = it },
                             label = { Text("Confirm Passphrase") },
                             placeholder = { Text("Re-enter passphrase") },
                             singleLine = true,
-                            visualTransformation = if (localShowPassphrase) androidx.compose.foundation.text.CoreTextFieldDefaults.VisualTransformation.None else androidx.compose.foundation.text.PasswordVisualTransformation(),
+                            visualTransformation = if (localShowPassphrase) VisualTransformation.None else PasswordVisualTransformation(),
                             modifier = Modifier.fillMaxWidth(),
                             isError = requireConfirmation && localPassphrase != localConfirmPassphrase && localConfirmPassphrase.isNotBlank(),
                             supportingText = {
@@ -318,11 +330,22 @@ fun BackupRestoreScreen(
                 }
             },
             confirmButton = {
-                val error = validatePassphrase(localPassphrase, if (requireConfirmation) localConfirmPassphrase else null)
-                if (error != null) {
-                    localError = error
-                } else {
-                    onConfirm(localPassphrase)
+                Button(
+                    onClick = {
+                        val error = validatePassphrase(localPassphrase, if (requireConfirmation) localConfirmPassphrase else null)
+                        if (error != null) {
+                            localError = error
+                        } else {
+                            onConfirm(localPassphrase)
+                        }
+                    },
+                    enabled = !isLoading
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Text("Confirm")
+                    }
                 }
             },
             dismissButton = {
@@ -351,7 +374,7 @@ fun BackupRestoreScreen(
             confirmButton = {
                 Button(
                     onClick = { onConfirm() },
-                    colors = if (isDestructive) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else null,
+                    colors = if (isDestructive) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else ButtonDefaults.buttonColors(),
                     enabled = !isLoading
                 ) {
                     if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onError)
@@ -799,7 +822,7 @@ fun DriveBackupTab(
             ) {
                 Column {
                     Text(
-                        text = if (isSignedIn) "Signed in to Google Drive" : "Not signed in",
+                        text = if (isSignedIn) "Signed in to Google Drive" else "Not signed in",
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium,
                         color = if (isSignedIn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
@@ -1032,7 +1055,7 @@ fun DriveBackupItem(
                     fontWeight = FontWeight.Medium,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(

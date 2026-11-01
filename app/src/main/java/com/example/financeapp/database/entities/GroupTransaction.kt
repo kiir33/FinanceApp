@@ -37,14 +37,14 @@ enum class GroupTxType {
     BANK_WITHDRAWAL       // Transfer: Bank -> Cash (Net 0)
 }
 
-@composable
-fun GroupTxType.displayName: String = when (this) {
-    SAVINGS_DEPOSIT -> "Savings Deposit"
-    SAVINGS_WITHDRAWAL -> "Savings Withdrawal"
-    LOAN_DISBURSEMENT -> "Loan Disbursement"
-    LOAN_REPAYMENT -> "Loan Repayment"
-    INTEREST_INCOME -> "Interest Income"
-    EXPENSE -> "Expense"
-    BANK_DEPOSIT -> "Cash → Bank Transfer"
-    BANK_WITHDRAWAL -> "Bank → Cash Transfer"
-}
+val GroupTxType.displayName: String
+    get() = when (this) {
+        GroupTxType.SAVINGS_DEPOSIT -> "Savings Deposit"
+        GroupTxType.SAVINGS_WITHDRAWAL -> "Savings Withdrawal"
+        GroupTxType.LOAN_DISBURSEMENT -> "Loan Disbursement"
+        GroupTxType.LOAN_REPAYMENT -> "Loan Repayment"
+        GroupTxType.INTEREST_INCOME -> "Interest Income"
+        GroupTxType.EXPENSE -> "Expense"
+        GroupTxType.BANK_DEPOSIT -> "Cash → Bank Transfer"
+        GroupTxType.BANK_WITHDRAWAL -> "Bank → Cash Transfer"
+    }

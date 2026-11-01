@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.financeapp.auth.SessionManager
 import com.example.financeapp.backup.BackupManager
+import com.example.financeapp.backup.BackupResult
 import com.example.financeapp.backup.GoogleDriveClient
 import com.example.financeapp.data.BankRepository
 import com.example.financeapp.database.AppDatabase
@@ -18,6 +19,7 @@ import com.example.financeapp.database.entities.LoanRepayment
 import com.example.financeapp.database.entities.SavingsAccount
 import com.example.financeapp.database.entities.SavingsTransaction
 import com.example.financeapp.database.entities.User
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -300,7 +302,7 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
     fun recordExpense(amount: Double, description: String, channel: String = "CASH", onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             val success = repository.recordExpense(amount, description, currentUserId, channel)
-            if (success) onSuccess() else onError("Insufficient ${channel.toLowerCase()} balance.")
+            if (success) onSuccess() else onError("Insufficient ${channel.lowercase()} balance.")
         }
     }
 
@@ -312,40 +314,25 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun exportDatabase(destUri: Uri) {
-        viewModelScope.launch {
-            val result = backupManager.exportDatabase(db, destUri)
-            if (result.isSuccess) {
-                _backupRestoreEvent.emit(BackupRestoreResult.BackupSuccess)
-            } else {
-                _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.exceptionOrNull()?.message ?: "Unknown error"))
-            }
-        }
+        exportDatabaseWithPassphrase(destUri, charArrayOf())
     }
 
     fun exportDatabaseWithPassphrase(destUri: Uri, passphrase: CharArray) {
         viewModelScope.launch {
             val result = backupManager.exportDatabase(db, destUri, currentUserId, SessionManager.currentSession.value?.username ?: "admin", passphrase)
-            if (result.isSuccess) {
-                _backupRestoreEvent.emit(BackupRestoreResult.BackupSuccess)
-            } else {
-                _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.exceptionOrNull()?.message ?: "Unknown error"))
+            when (result) {
+                is BackupResult.Success -> {
+                    _backupRestoreEvent.emit(BackupRestoreResult.BackupSuccess)
+                }
+                is BackupResult.Failure -> {
+                    _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.message))
+                }
             }
         }
     }
 
     fun importDatabase(sourceUri: Uri) {
-        viewModelScope.launch {
-            val result = backupManager.importDatabase(db, sourceUri) {
-                // Re-open DB
-                db = AppDatabase.getDatabase(getApplication())
-                repository = BankRepository(db)
-            }
-            if (result.isSuccess) {
-                _backupRestoreEvent.emit(BackupRestoreResult.RestoreSuccess)
-            } else {
-                _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.exceptionOrNull()?.message ?: "Unknown error"))
-            }
-        }
+        importDatabaseWithPassphrase(sourceUri, charArrayOf())
     }
 
     fun importDatabaseWithPassphrase(sourceUri: Uri, passphrase: CharArray) {
@@ -355,10 +342,13 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
                 db = AppDatabase.getDatabase(getApplication())
                 repository = BankRepository(db)
             }
-            if (result.isSuccess) {
-                _backupRestoreEvent.emit(BackupRestoreResult.RestoreSuccess)
-            } else {
-                _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.exceptionOrNull()?.message ?: "Unknown error"))
+            when (result) {
+                is BackupResult.Success -> {
+                    _backupRestoreEvent.emit(BackupRestoreResult.RestoreSuccess)
+                }
+                is BackupResult.Failure -> {
+                    _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.message))
+                }
             }
         }
     }
@@ -372,10 +362,11 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
     fun getDriveSignInIntent(): Intent = backupManager.getDriveSignInIntent()
 
     fun handleDriveSignInResult(data: Intent): GoogleDriveClient.DriveResult<com.google.android.gms.auth.api.signin.GoogleSignInAccount> {
-        return backupManager.handleDriveSignInResult(data)
+        val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+        return backupManager.handleDriveSignInResult(task)
     }
 
-    fun driveSignOut(): GoogleDriveClient.DriveResult<Unit> = backupManager.driveSignOut()
+    suspend fun driveSignOut(): GoogleDriveClient.DriveResult<Unit> = backupManager.driveSignOut()
 
     // Drive events
     private val _driveBackupsEvent = MutableSharedFlow<GoogleDriveClient.DriveResult<List<GoogleDriveClient.DriveFile>>>()
@@ -420,10 +411,10 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
             }
             _driveOperationProgress.emit(BackupRestoreResult.DriveOperationComplete(fileId))
             when (result) {
-                is BackupManager.BackupResult.Success -> {
+                is BackupResult.Success -> {
                     _backupRestoreEvent.emit(BackupRestoreResult.DriveRestoreSuccess)
                 }
-                is BackupManager.BackupResult.Failure -> {
+                is BackupResult.Failure -> {
                     _backupRestoreEvent.emit(BackupRestoreResult.Failure(result.message))
                 }
             }
@@ -464,7 +455,7 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun getGuarantorForLoan(guarantorId: Long?): Client? {
-        return if (guarantorId != null) repository.getClientById(guarantorId) else null
+        return if (guarantorId != null) allClients.value.find { it.id == guarantorId } else null
     }
 }
 

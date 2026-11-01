@@ -11,14 +11,15 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Task
-import com.google.api.client.extensions.android.http.AndroidHttp
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import com.google.api.services.drive.model.File
 import com.google.api.services.drive.model.FileList
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -44,7 +45,7 @@ class GoogleDriveClient(private val context: Context) {
         .requestEmail()
         .build()
 
-    private val googleSignInClient: GoogleSignInClient = GoogleSignIn.getClient(context, signInOptions)
+    val googleSignInClient: GoogleSignInClient = GoogleSignIn.getClient(context, signInOptions)
 
     private var driveService: Drive? = null
     private var currentAccount: GoogleSignInAccount? = null
@@ -54,8 +55,9 @@ class GoogleDriveClient(private val context: Context) {
      */
     sealed interface DriveResult<out T> {
         data class Success<out T>(val data: T) : DriveResult<T>
-        data class Failure(val message: String, val exception: Throwable? = null) : DriveResult<Nothing>
+        data class Failure(val message: String, val exception: Throwable? = null) : DriveResult<Nothing> {
             override fun toString(): String = "Failure: $message${exception?.let { " (${it.message})" } ?: ""}"
+        }
     }
 
     /**
@@ -144,7 +146,7 @@ class GoogleDriveClient(private val context: Context) {
             Collections.singleton(DriveScopes.DRIVE_APPDATA)
         )
         credential.selectedAccount = account.account
-        driveService = Drive.Builder(AndroidHttp.newCompatibleTransport(), GsonFactory.getDefaultInstance(), credential)
+        driveService = Drive.Builder(NetHttpTransport(), GsonFactory.getDefaultInstance(), credential)
             .setApplicationName("FinanceApp")
             .build()
     }
@@ -170,11 +172,10 @@ class GoogleDriveClient(private val context: Context) {
         inputStream: InputStream,
         mimeType: String = "application/octet-stream"
     ): DriveResult<DriveFile> = withContext(Dispatchers.IO) {
-        val serviceResult = ensureDriveService()
-        if (serviceResult is DriveResult.Failure) {
-            return@withContext serviceResult
+        val service = when (val serviceResult = ensureDriveService()) {
+            is DriveResult.Success -> serviceResult.data
+            is DriveResult.Failure -> return@withContext serviceResult
         }
-        val service = serviceResult.data
 
         try {
             val fileMetadata = File()
@@ -194,7 +195,7 @@ class GoogleDriveClient(private val context: Context) {
             val driveFile = DriveFile(
                 id = uploadedFile.id,
                 name = uploadedFile.name!!,
-                size = uploadedFile.size ?: byteArray.size.toLong(),
+                size = uploadedFile.size?.toLong() ?: byteArray.size.toLong(),
                 createdTime = uploadedFile.createdTime?.value ?: System.currentTimeMillis(),
                 modifiedTime = uploadedFile.modifiedTime?.value ?: System.currentTimeMillis()
             )
@@ -215,11 +216,10 @@ class GoogleDriveClient(private val context: Context) {
      * Lists recent backup files in appDataFolder.
      */
     suspend fun listRecentBackups(maxResults: Int = 5): DriveResult<List<DriveFile>> = withContext(Dispatchers.IO) {
-        val serviceResult = ensureDriveService()
-        if (serviceResult is DriveResult.Failure) {
-            return@withContext serviceResult
+        val service = when (val serviceResult = ensureDriveService()) {
+            is DriveResult.Success -> serviceResult.data
+            is DriveResult.Failure -> return@withContext serviceResult
         }
-        val service = serviceResult.data
 
         try {
             val fileList: FileList = service.files()
@@ -235,9 +235,9 @@ class GoogleDriveClient(private val context: Context) {
                 DriveFile(
                     id = file.id!!,
                     name = file.name!!,
-                    size = file.size ?: 0,
-                    createdTime = file.createdTime?.value ?: 0,
-                    modifiedTime = file.modifiedTime?.value ?: 0
+                    size = file.size?.toLong() ?: 0L,
+                    createdTime = file.createdTime?.value ?: 0L,
+                    modifiedTime = file.modifiedTime?.value ?: 0L
                 )
             }
 
@@ -257,11 +257,10 @@ class GoogleDriveClient(private val context: Context) {
      * Downloads a backup file from Drive.
      */
     suspend fun downloadBackup(fileId: String): DriveResult<ByteArray> = withContext(Dispatchers.IO) {
-        val serviceResult = ensureDriveService()
-        if (serviceResult is DriveResult.Failure) {
-            return@withContext serviceResult
+        val service = when (val serviceResult = ensureDriveService()) {
+            is DriveResult.Success -> serviceResult.data
+            is DriveResult.Failure -> return@withContext serviceResult
         }
-        val service = serviceResult.data
 
         try {
             val outputStream = ByteArrayOutputStream()
@@ -286,11 +285,10 @@ class GoogleDriveClient(private val context: Context) {
      * Downloads a backup file as InputStream for streaming.
      */
     suspend fun downloadBackupAsStream(fileId: String): DriveResult<InputStream> = withContext(Dispatchers.IO) {
-        val serviceResult = ensureDriveService()
-        if (serviceResult is DriveResult.Failure) {
-            return@withContext serviceResult
+        val service = when (val serviceResult = ensureDriveService()) {
+            is DriveResult.Success -> serviceResult.data
+            is DriveResult.Failure -> return@withContext serviceResult
         }
-        val service = serviceResult.data
 
         try {
             val inputStream = service.files()
@@ -313,11 +311,10 @@ class GoogleDriveClient(private val context: Context) {
      * Deletes a backup file from Drive.
      */
     suspend fun deleteBackup(fileId: String): DriveResult<Unit> = withContext(Dispatchers.IO) {
-        val serviceResult = ensureDriveService()
-        if (serviceResult is DriveResult.Failure) {
-            return@withContext serviceResult
+        val service = when (val serviceResult = ensureDriveService()) {
+            is DriveResult.Success -> serviceResult.data
+            is DriveResult.Failure -> return@withContext serviceResult
         }
-        val service = serviceResult.data
 
         try {
             service.files().delete(fileId).execute()
@@ -336,12 +333,11 @@ class GoogleDriveClient(private val context: Context) {
      * Cleans up old backups beyond the retention limit.
      */
     suspend fun cleanupOldBackups(keepCount: Int = 5): DriveResult<Int> = withContext(Dispatchers.IO) {
-        val listResult = listRecentBackups(keepCount + 10) // Get more to find old ones
-        if (listResult is DriveResult.Failure) {
-            return@withContext DriveResult.Failure(listResult.message, listResult.exception)
+        val files = when (val listResult = listRecentBackups(keepCount + 10)) {
+            is DriveResult.Success -> listResult.data
+            is DriveResult.Failure -> return@withContext DriveResult.Failure(listResult.message, listResult.exception)
         }
 
-        val files = listResult.data
         if (files.size <= keepCount) {
             return@withContext DriveResult.Success(0)
         }
@@ -350,11 +346,9 @@ class GoogleDriveClient(private val context: Context) {
         var deletedCount = 0
 
         for (file in toDelete) {
-            val deleteResult = deleteBackup(file.id)
-            if (deleteResult is DriveResult.Success) {
-                deletedCount++
-            } else {
-                Log.w(TAG, "Failed to delete old backup: ${file.id} - ${deleteResult.message}")
+            when (val deleteResult = deleteBackup(file.id)) {
+                is DriveResult.Success -> deletedCount++
+                is DriveResult.Failure -> Log.w(TAG, "Failed to delete old backup: ${file.id} - ${deleteResult.message}")
             }
         }
 

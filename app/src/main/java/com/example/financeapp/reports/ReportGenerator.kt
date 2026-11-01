@@ -11,7 +11,13 @@ import com.example.financeapp.database.entities.LoanRepayment
 import com.example.financeapp.database.entities.SavingsAccount
 import com.example.financeapp.database.entities.SavingsTransaction
 import com.example.financeapp.database.entities.User
+import com.example.financeapp.database.entities.currentOutstandingBalance
+import com.example.financeapp.database.entities.displayName
+import com.example.financeapp.database.entities.maturityDateMillis
+import com.example.financeapp.database.entities.monthsElapsed
+import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -36,7 +42,7 @@ object ReportGenerator {
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun generateMemberDirectory(context: Context): String {
+    suspend fun generateMemberDirectory(context: Context): String {
         return withContext(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(context)
             val clients = db.clientDao().getAllClientsBlocking()
@@ -78,7 +84,7 @@ object ReportGenerator {
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun generateAllMembersSavingsSummary(context: Context): String {
+    suspend fun generateAllMembersSavingsSummary(context: Context): String {
         return withContext(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(context)
             val clients = db.clientDao().getAllClientsBlocking()
@@ -89,9 +95,9 @@ object ReportGenerator {
             val totalDepositedByAccount = savingsTransactions.filter { it.type == "DEPOSIT" }
                 .groupingBy { it.accountId }.fold(0.0) { acc, tx -> acc + tx.amount }
             val totalWithdrawnByAccount = savingsTransactions.filter { it.type == "WITHDRAWAL" }
-                .groupingBy { it.accountId }.fold(0.0) { acc, tx -> acc + tx.amount.abs() }
-            val lastTxDateByAccount = savingsTransactions.groupingBy { it.accountId }
-                .maxBy { it.transactionDate }?.transactionDate
+                .groupingBy { it.accountId }.fold(0.0) { acc, tx -> acc + abs(tx.amount) }
+            val lastTxDateByAccount = savingsTransactions.groupBy { it.accountId }
+                .mapValues { (_, txs) -> txs.maxByOrNull { it.transactionDate }?.transactionDate }
 
             val accountByClient = savingsAccounts.associateBy { it.clientId }
 
@@ -129,7 +135,7 @@ object ReportGenerator {
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun generateSavingsPassbookTransactions(context: Context, fromDate: Long, toDate: Long): String {
+    suspend fun generateSavingsPassbookTransactions(context: Context, fromDate: Long, toDate: Long): String {
         return withContext(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(context)
             val transactions = if (fromDate > 0 && toDate > 0 && fromDate <= toDate) {
@@ -166,8 +172,8 @@ object ReportGenerator {
                     escapeCsv(client?.name ?: ""),
                     escapeCsv(account?.accountNumber ?: ""),
                     escapeCsv(if (isDeposit) "DEPOSIT" else "WITHDRAWAL"),
-                    escapeCsv(if (isDeposit) formatAmount(tx.amount.abs()) else ""),
-                    escapeCsv(if (!isDeposit) formatAmount(tx.amount.abs()) else ""),
+                    escapeCsv(if (isDeposit) formatAmount(abs(tx.amount)) else ""),
+                    escapeCsv(if (!isDeposit) formatAmount(abs(tx.amount)) else ""),
                     escapeCsv(tx.description)
                 ))
             }
@@ -177,7 +183,7 @@ object ReportGenerator {
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun generateAllLoansMasterLedger(context: Context): String {
+    suspend fun generateAllLoansMasterLedger(context: Context): String {
         return withContext(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(context)
             val loans = db.loanDao().getAllLoansBlocking()
@@ -237,7 +243,7 @@ object ReportGenerator {
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun generateActiveLoansAgingReport(context: Context): String {
+    suspend fun generateActiveLoansAgingReport(context: Context): String {
         return withContext(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(context)
             val activeLoans = db.loanDao().getActiveLoansBlocking()
@@ -302,7 +308,7 @@ object ReportGenerator {
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun generateLoanRepaymentsHistory(context: Context): String {
+    suspend fun generateLoanRepaymentsHistory(context: Context): String {
         return withContext(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(context)
             val repayments = db.loanDao().getAllRepaymentsBlocking()
@@ -331,7 +337,7 @@ object ReportGenerator {
             for (repayment in repayments) {
                 val loan = loans[repayment.loanId]
                 val borrower = loan?.let { clients[it.clientId] }
-                val loanRepayments = repaymentsByLoan[loan.id] ?: emptyList()
+                val loanRepayments = loan?.let { repaymentsByLoan[it.id] } ?: emptyList()
                 val index = loanRepayments.indexOf(repayment)
                 val remainingAfter = if (index >= 0) {
                     val priorRepayments = loanRepayments.take(index + 1)
@@ -356,7 +362,7 @@ object ReportGenerator {
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun generateGroupBalanceSheet(context: Context): String {
+    suspend fun generateGroupBalanceSheet(context: Context): String {
         return withContext(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(context)
             val groupAccount = db.groupAccountDao().getGroupAccountByIdBlocking() ?: GroupAccount()
@@ -391,7 +397,7 @@ object ReportGenerator {
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun generateIncomeStatementProfitLoss(context: Context): String {
+    suspend fun generateIncomeStatementProfitLoss(context: Context): String {
         return withContext(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(context)
             val totalInterestEarned = db.loanDao().getTotalInterestEarnedBlocking() ?: 0.0
@@ -419,7 +425,7 @@ object ReportGenerator {
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun generateTreasuryCashFlow(context: Context): String {
+    suspend fun generateTreasuryCashFlow(context: Context): String {
         return withContext(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(context)
             val transactions = db.groupTransactionDao().getAllTransactionsBlocking()
@@ -474,7 +480,7 @@ object ReportGenerator {
     }
 
     @Suppress("UNUSED_PARAMETER")
-    fun generateSystemAuditTrail(context: Context): String {
+    suspend fun generateSystemAuditTrail(context: Context): String {
         return withContext(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(context)
             val auditLogs = db.auditLogDao().getAllAuditLogsBlocking()
@@ -519,6 +525,9 @@ private fun com.example.financeapp.database.dao.ClientDao.getAllClientsBlocking(
 
 private fun com.example.financeapp.database.dao.SavingsDao.getAllSavingsAccountsBlocking(): List<SavingsAccount> =
     kotlinx.coroutines.runBlocking { getAllSavingsAccounts().first() }
+
+private fun com.example.financeapp.database.dao.SavingsDao.getAccountByClientIdBlocking(clientId: Long): SavingsAccount? =
+    kotlinx.coroutines.runBlocking { getAccountByClientId(clientId).first() }
 
 private fun com.example.financeapp.database.dao.SavingsDao.getAllTransactionsBlocking(): List<SavingsTransaction> =
     kotlinx.coroutines.runBlocking { getAllTransactions().first() }

@@ -12,16 +12,15 @@ import com.example.financeapp.database.entities.User
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.mockito.Mockito.mock
 
 class AuthService private constructor(
-    private val application: Application,
-    private val db: AppDatabase,
+    private val application: Application? = null,
+    val db: AppDatabase,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
-    private val userDao: UserDao = db.userDao()
-    private val auditLogDao: AuditLogDao = db.auditLogDao()
-    private val clientDao = db.clientDao()
+    val userDao: UserDao = db.userDao()
+    val auditLogDao: AuditLogDao = db.auditLogDao()
+    val clientDao = db.clientDao()
 
     companion object {
         @Volatile
@@ -46,7 +45,7 @@ class AuthService private constructor(
         // For testing with mock database
         fun getInstanceForTest(db: AppDatabase): AuthService {
             return AuthService(
-                application = mock(Application::class.java),
+                application = null,
                 db = db
             )
         }

@@ -37,7 +37,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +58,12 @@ import com.example.financeapp.database.entities.SavingsTransaction
 import com.example.financeapp.ui.main.BankViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.ui.draw.clip
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.financeapp.database.entities.currentOutstandingBalance
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -132,46 +137,48 @@ fun MemberDashboardScreen(
                 ) {
                     Text(text = stringResource(R.string.member_dashboard_no_session), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
                 }
-            } else if (client == null) {
-                // Loading
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    androidx.compose.material3.CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(text = stringResource(R.string.member_dashboard_loading), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
-                }
             } else {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Welcome Card
-                    WelcomeCard(client = client)
-
-                    // Savings Summary Card
-                    savingsAccount?.let { account ->
-                        SavingsSummaryCard(
-                            account = account,
-                            transactions = savingsTransactions,
-                            onViewPassbook = { /* Navigate to passbook */ }
-                        )
+                val currentClient = client
+                if (currentClient == null) {
+                    // Loading
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(text = stringResource(R.string.member_dashboard_loading), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
                     }
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Welcome Card
+                        WelcomeCard(client = currentClient)
 
-                    // Active Loan Card
-                    val activeLoan = loans.find { it.status == "ACTIVE" }
-                    activeLoan?.let { loan ->
-                        ActiveLoanCard(
-                            loan = loan,
-                            client = client,
-                            guarantor = viewModel.getGuarantorForLoan(loan.guarantorId)
-                        )
-                    }
+                        // Savings Summary Card
+                        savingsAccount?.let { account ->
+                            SavingsSummaryCard(
+                                account = account,
+                                transactions = savingsTransactions,
+                                onViewPassbook = { /* Navigate to passbook */ }
+                            )
+                        }
 
-                    // No active loan message
-                    if (activeLoan == null && loans.isNotEmpty()) {
+                        // Active Loan Card
+                        val activeLoan = loans.find { it.status == "ACTIVE" }
+                        activeLoan?.let { loan ->
+                            ActiveLoanCard(
+                                loan = loan,
+                                client = currentClient,
+                                guarantor = viewModel.getGuarantorForLoan(loan.guarantorId)
+                            )
+                        }
+
+                        // No active loan message
+                        if (activeLoan == null && loans.isNotEmpty()) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -210,7 +217,7 @@ fun MemberDashboardScreen(
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                 )
                             }
-                        )
+                        }
                     }
                 }
             }
@@ -224,6 +231,7 @@ fun MemberDashboardScreen(
             onSuccess = { showChangePassword = false }
         )
     }
+}
 }
 
 @Composable
@@ -368,12 +376,11 @@ private fun SavingsSummaryCard(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                 )
             } else {
-                LazyColumn(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    maxLines = 3 // Show only 3 recent transactions
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(transactions.take(3)) { tx ->
+                    transactions.take(3).forEach { tx ->
                         TransactionRow(transaction = tx)
                     }
                 }
@@ -568,7 +575,7 @@ fun ChangePasswordDialog(
     onSuccess: () -> Unit
 ) {
     val context = LocalContext.current
-    val authService = remember { com.example.financeapp.auth.AuthService.getInstance(context.applicationContext) }
+    val authService = remember { com.example.financeapp.auth.AuthService.getInstance(context.applicationContext as android.app.Application) }
     val currentUserId = SessionManager.currentSession.value?.userId ?: 0L
 
     var oldPassword by remember { mutableStateOf("") }
@@ -597,33 +604,36 @@ fun ChangePasswordDialog(
             context.getString(R.string.change_password_error_mismatch) else null
     }
 
-    val handleSubmit = {
+    val handleSubmit: () -> Unit = {
         validateNewPassword()
         validateConfirmPassword()
-        if (newPasswordError != null || confirmPasswordError != null || oldPassword.isBlank()) return@handleSubmit
+        if (newPasswordError == null && confirmPasswordError == null && oldPassword.isNotBlank()) {
+            isLoading = true
+            errorMessage = null
 
-        isLoading = true
-        errorMessage = null
-
-        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-            val result = authService.changePassword(currentUserId, oldPassword, newPassword)
-            androidx.compose.runtime.Snapshot.withMutableSnapshot {
-                isLoading = false
-                when (result) {
-                    is com.example.financeapp.auth.AuthResult.PasswordChangeSuccess -> {
-                        onSuccess()
-                    }
-                    is com.example.financeapp.auth.AuthResult.PasswordChangeFailure.InvalidOldPassword -> {
-                        errorMessage = context.getString(R.string.change_password_error_old_invalid)
-                    }
-                    is com.example.financeapp.auth.AuthResult.PasswordChangeFailure.WeakNewPassword -> {
-                        newPasswordError = result.message
-                    }
-                    is com.example.financeapp.auth.AuthResult.PasswordChangeFailure.SameAsOldPassword -> {
-                        newPasswordError = context.getString(R.string.change_password_error_same)
-                    }
-                    else -> {
-                        errorMessage = context.getString(R.string.change_password_error_unknown)
+            kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                val result = authService.changePassword(currentUserId, oldPassword, newPassword)
+                withContext(Dispatchers.Main) {
+                    isLoading = false
+                    when (result) {
+                        is com.example.financeapp.auth.AuthResult.PasswordChangeSuccess -> {
+                            onSuccess()
+                        }
+                        is com.example.financeapp.auth.AuthResult.PasswordChangeFailure.InvalidOldPassword -> {
+                            errorMessage = context.getString(R.string.change_password_error_old_invalid)
+                        }
+                        is com.example.financeapp.auth.AuthResult.PasswordChangeFailure.WeakNewPassword -> {
+                            newPasswordError = result.message
+                        }
+                        is com.example.financeapp.auth.AuthResult.PasswordChangeFailure.SameAsOldPassword -> {
+                            errorMessage = context.getString(R.string.change_password_error_same)
+                        }
+                        is com.example.financeapp.auth.AuthResult.PasswordChangeFailure.UnknownError -> {
+                            errorMessage = result.message
+                        }
+                        else -> {
+                            errorMessage = context.getString(R.string.change_password_error_unknown)
+                        }
                     }
                 }
             }

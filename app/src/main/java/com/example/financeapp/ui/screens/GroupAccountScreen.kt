@@ -1,5 +1,7 @@
 package com.example.financeapp.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ArrowBack
@@ -42,24 +45,26 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.financeapp.R
 import com.example.financeapp.database.entities.GroupAccount
 import com.example.financeapp.database.entities.GroupTransaction
 import com.example.financeapp.database.entities.GroupTxType
+import com.example.financeapp.database.entities.displayName
 import com.example.financeapp.ui.main.BankViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -132,7 +137,8 @@ fun GroupAccountScreen(
                             amount = account.cashBalance,
                             icon = Icons.Default.AttachMoney,
                             iconColor = MaterialTheme.colorScheme.primary,
-                            isPositive = true
+                            isPositive = true,
+                            modifier = Modifier.weight(1f)
                         )
                         // Bank Balance Card
                         SummaryCard(
@@ -140,7 +146,8 @@ fun GroupAccountScreen(
                             amount = account.bankBalance,
                             icon = Icons.Default.AccountBalance,
                             iconColor = MaterialTheme.colorScheme.secondary,
-                            isPositive = true
+                            isPositive = true,
+                            modifier = Modifier.weight(1f)
                         )
                     }
 
@@ -178,14 +185,16 @@ fun GroupAccountScreen(
                         subtitle = stringResource(R.string.group_account_cash_to_bank_desc),
                         icon = Icons.Default.ArrowDownward,
                         iconColor = MaterialTheme.colorScheme.primary,
-                        onClick = { showCashToBankDialog = true }
+                        onClick = { showCashToBankDialog = true },
+                        modifier = Modifier.weight(1f)
                     )
                     ActionButton(
                         title = stringResource(R.string.group_account_bank_to_cash),
                         subtitle = stringResource(R.string.group_account_bank_to_cash_desc),
                         icon = Icons.Default.ArrowUpward,
                         iconColor = MaterialTheme.colorScheme.secondary,
-                        onClick = { showBankToCashDialog = true }
+                        onClick = { showBankToCashDialog = true },
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
@@ -198,14 +207,16 @@ fun GroupAccountScreen(
                         subtitle = stringResource(R.string.group_account_record_expense_desc),
                         icon = Icons.Default.Payments,
                         iconColor = MaterialTheme.colorScheme.error,
-                        onClick = { showExpenseDialog = true }
+                        onClick = { showExpenseDialog = true },
+                        modifier = Modifier.weight(1f)
                     )
                     ActionButton(
                         title = stringResource(R.string.group_account_record_income),
                         subtitle = stringResource(R.string.group_account_record_income_desc),
                         icon = Icons.Default.TrendingUp,
                         iconColor = MaterialTheme.colorScheme.tertiary,
-                        onClick = { showInterestIncomeDialog = true }
+                        onClick = { showInterestIncomeDialog = true },
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
@@ -219,7 +230,7 @@ fun GroupAccountScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                if (groupTransactions?.isEmpty() != false) {
+                if (groupTransactions.isEmpty()) {
                     Text(
                         text = stringResource(R.string.group_account_no_transactions),
                         style = MaterialTheme.typography.bodyMedium,
@@ -231,7 +242,7 @@ fun GroupAccountScreen(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(groupTransactions ?: emptyList()) { tx ->
+                        items(groupTransactions) { tx ->
                             LedgerRow(transaction = tx)
                         }
                     }
@@ -321,15 +332,15 @@ fun GroupAccountScreen(
 private fun SummaryCard(
     title: String,
     amount: Double,
-    icon: androidx.compose.material.icons.filled.Icon,
+    icon: ImageVector,
     iconColor: androidx.compose.ui.graphics.Color,
     isPositive: Boolean,
-    isLarge: Boolean = false
+    isLarge: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .weight(if (isLarge) 2f else 1f)
             .height(if (isLarge) 120.dp else 100.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
@@ -444,14 +455,14 @@ private fun BankInfoCard(account: GroupAccount, onEditClick: () -> Unit) {
 private fun ActionButton(
     title: String,
     subtitle: String,
-    icon: androidx.compose.material.icons.filled.Icon,
+    icon: ImageVector,
     iconColor: androidx.compose.ui.graphics.Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .weight(1f)
             .height(100.dp)
             .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -625,22 +636,20 @@ fun TransferDialog(
 
     val maxAmount = if (isCashToBank) groupAccount.cashBalance else groupAccount.bankBalance
 
-    val handleSubmit = {
+    val handleSubmit: () -> Unit = {
         val amount = amountStr.toDoubleOrNull() ?: 0.0
         if (amount <= 0) {
             errorMessage = context.getString(R.string.group_account_error_invalid_amount)
-            return@handleSubmit
-        }
-        if (amount > maxAmount) {
+        } else if (amount > maxAmount) {
             errorMessage = if (isCashToBank)
                 context.getString(R.string.group_account_error_insufficient_cash)
             else
                 context.getString(R.string.group_account_error_insufficient_bank)
-            return@handleSubmit
+        } else {
+            isLoading = true
+            errorMessage = null
+            onConfirm(amount, description.ifBlank { if (isCashToBank) context.getString(R.string.group_account_cash_to_bank) else context.getString(R.string.group_account_bank_to_cash) })
         }
-        isLoading = true
-        errorMessage = null
-        onConfirm(amount, description.ifBlank { if (isCashToBank) context.getString(R.string.group_account_cash_to_bank) else context.getString(R.string.group_account_bank_to_cash) })
     }
 
     androidx.compose.material3.AlertDialog(
@@ -713,23 +722,21 @@ fun ExpenseIncomeDialog(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
 
-    val handleSubmit = {
+    val handleSubmit: () -> Unit = {
         val amount = amountStr.toDoubleOrNull() ?: 0.0
+        val balance = if (channel == "CASH") groupAccount.cashBalance else groupAccount.bankBalance
         if (amount <= 0) {
             errorMessage = context.getString(R.string.group_account_error_invalid_amount)
-            return@handleSubmit
-        }
-        val balance = if (channel == "CASH") groupAccount.cashBalance else groupAccount.bankBalance
-        if (isExpense && amount > balance) {
+        } else if (isExpense && amount > balance) {
             errorMessage = if (channel == "CASH")
                 context.getString(R.string.group_account_error_insufficient_cash)
             else
                 context.getString(R.string.group_account_error_insufficient_bank)
-            return@handleSubmit
+        } else {
+            isLoading = true
+            errorMessage = null
+            onConfirm(amount, description.ifBlank { title }, channel)
         }
-        isLoading = true
-        errorMessage = null
-        onConfirm(amount, description.ifBlank { title }, channel)
     }
 
     androidx.compose.material3.AlertDialog(
@@ -810,7 +817,7 @@ fun EditBankInfoDialog(
     var bankAccountNumber by remember { mutableStateOf(account.bankAccountNumber) }
     var isLoading by remember { mutableStateOf(false) }
 
-    val handleSave = {
+    val handleSave: () -> Unit = {
         isLoading = true
         onSave(bankName, bankAccountNumber)
     }

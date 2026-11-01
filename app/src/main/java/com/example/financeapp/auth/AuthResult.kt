@@ -11,18 +11,18 @@ sealed interface AuthResult {
         data class AccountInactive(val message: String = "This account has been deactivated") : Failure
         data class UnknownError(val message: String) : Failure
     }
-    data class PasswordChangeSuccess : AuthResult
+    data object PasswordChangeSuccess : AuthResult
     sealed interface PasswordChangeFailure : AuthResult {
-        data class InvalidOldPassword : PasswordChangeFailure
+        data object InvalidOldPassword : PasswordChangeFailure
         data class WeakNewPassword(val message: String) : PasswordChangeFailure
-        data class SameAsOldPassword : PasswordChangeFailure
+        data object SameAsOldPassword : PasswordChangeFailure
         data class UnknownError(val message: String) : PasswordChangeFailure
     }
     data class FirstRunStatus(val isFirstRun: Boolean) : AuthResult
     data class AdminCreated(val user: User) : AuthResult
     sealed interface AdminCreationFailure : AuthResult {
         data class ValidationError(val message: String) : AdminCreationFailure
-        data class UserAlreadyExists : AdminCreationFailure
+        data object UserAlreadyExists : AdminCreationFailure
         data class UnknownError(val message: String) : AdminCreationFailure
     }
 }
