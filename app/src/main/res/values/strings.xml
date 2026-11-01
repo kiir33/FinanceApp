@@ -193,7 +193,7 @@
     <string name="csv_import_loans_file_desc">Member_ID,Guarantor_Member_ID,Disbursed_Amount,Interest_Rate,Tenure_Months,Disbursement_Date,Current_Outstanding</string>
     <string name="csv_import_download_template">Download Template</string>
     <string name="csv_import_pick_file">Pick File</string>
-    <string name="csv_import_validate_button">Validate & Preview</string>
+    <string name="csv_import_validate_button">Validate &amp; Preview</string>
     <string name="csv_import_validation_errors">Validation Errors</string>
     <string name="csv_import_error_count">%1$d error(s) found</string>
     <string name="csv_import_error_row">Row %1$d</string>
@@ -260,7 +260,7 @@
     <string name="admin_setup_client_id_label">Member ID</string>
     <string name="admin_setup_client_id_hint">Your member ID (e.g., 1)</string>
     <string name="admin_setup_password_label">Master Password</string>
-    <string name="admin_setup_password_hint">Min 8 chars, letters & numbers</string>
+    <string name="admin_setup_password_hint">Min 8 chars, letters &amp; numbers</string>
     <string name="admin_setup_confirm_password_label">Confirm Password</string>
     <string name="admin_setup_confirm_password_hint">Re-enter your password</string>
     <string name="admin_setup_show_password">Show Password</string>
@@ -408,6 +408,4 @@
     <string name="group_tx_type_expense">Expense</string>
     <string name="group_tx_type_bank_deposit">Cash → Bank Transfer</string>
     <string name="group_tx_type_bank_withdrawal">Bank → Cash Transfer</string>
->>>>>>> origin/main
->>>>>>> origin/main
 </resources>
