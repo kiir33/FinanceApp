@@ -35,6 +35,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -98,6 +99,17 @@ fun DashboardScreen(
     val session by SessionManager.currentSession.collectAsState()
     val scope = rememberCoroutineScope()
     var showAddClientDialog by remember { mutableStateOf(false) }
+    var suggestedClientId by remember { mutableStateOf(0) }
+
+    // Fetch the suggested client ID when the dialog opens; reset it once the dialog closes so
+    // the next open always shows a fresh value rather than the previous suggestion.
+    LaunchedEffect(showAddClientDialog) {
+        if (showAddClientDialog) {
+            suggestedClientId = viewModel.getNextClientId()
+        } else {
+            suggestedClientId = 0
+        }
+    }
     var showDepositDialog by remember { mutableStateOf(false) }
     var showRepayDialog by remember { mutableStateOf(false) }
 
@@ -463,7 +475,9 @@ fun DashboardScreen(
         }
     }
 
-    if (showAddClientDialog) {
+    // Only compose the dialog once the suggestion has loaded (0 means "still loading"), otherwise
+    // the Member ID field would initialize with a stale 0.
+    if (showAddClientDialog && suggestedClientId > 0) {
         AddClientDialog(
             onDismiss = { showAddClientDialog = false },
             onConfirm = { name, phone, address, clientId ->
@@ -472,7 +486,8 @@ fun DashboardScreen(
             },
             checkClientIdUnique = { id, callback ->
                 viewModel.checkClientIdUnique(id, callback)
-            }
+            },
+            suggestedClientId = suggestedClientId
         )
     }
 

@@ -30,4 +30,7 @@ interface ClientDao {
 
     @Query("SELECT COUNT(*) FROM clients")
     fun getClientCount(): Flow<Int>
+
+    @Query("SELECT MAX(clientId) FROM clients")
+    suspend fun getMaxClientId(): Int?
 }
