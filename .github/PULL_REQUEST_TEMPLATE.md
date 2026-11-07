@@ -19,3 +19,4 @@ Refs #<issue-number>
 - [ ] Build passes locally
 - [ ] Issue number referenced above
 - [ ] No unrelated changes included
+- [ ] PR title uses proper casing (Title Case for descriptive portion)

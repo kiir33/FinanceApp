@@ -106,9 +106,14 @@ pr/author-deepseek-j{N} (permanent) → pr/reviewed-by-glm → pr/changes-reques
 
 #### PR Creation
 - Base: `main` (always rebase onto latest main before PR)
-- Title: `[PHASE-x] <descriptive title>`
+- Title: `[PHASE-x] <Descriptive Title>` — use Title Case for the descriptive portion
 - Body: `Closes #N\n\n<summary>\nPlan section refs`
 - Auto-assign `pr/author-deepseek-j{N}` label
+
+#### PR Title Casing
+- Use Title Case for PR titles (capitalize significant words; keep prepositions/articles lowercase unless first).
+- Do not use all-lowercase titles.
+- Example: `Feat: First Regular Release v1.0.0 — Signing + Automated Version Bump`
 
 #### Rebase Protocol
 - Before PR: `git fetch origin && git rebase origin/main`
