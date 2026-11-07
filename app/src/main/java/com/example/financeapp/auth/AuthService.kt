@@ -7,7 +7,6 @@ import com.example.financeapp.database.AppDatabase
 import com.example.financeapp.database.dao.AuditLogDao
 import com.example.financeapp.database.dao.UserDao
 import com.example.financeapp.database.entities.AuditLog
-import com.example.financeapp.database.entities.Client
 import com.example.financeapp.database.entities.User
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +19,6 @@ class AuthService private constructor(
 ) {
     val userDao: UserDao = db.userDao()
     val auditLogDao: AuditLogDao = db.auditLogDao()
-    val clientDao = db.clientDao()
 
     companion object {
         @Volatile
