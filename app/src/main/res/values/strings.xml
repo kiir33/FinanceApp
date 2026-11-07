@@ -38,6 +38,8 @@
     <string name="dialog_add_client_error_required">All fields are required.</string>
     <string name="dialog_add_client_error_invalid_id">Member ID must be a valid integer.</string>
     <string name="dialog_add_client_error_duplicate_id">Member ID must be unique.</string>
+    <string name="dialog_add_client_error_duplicate_phone">Phone number already registered.</string>
+    <string name="dialog_add_client_error_duplicate_name_id">Member with this ID and name already exists.</string>
     <string name="dialog_add_client_error_invalid_phone">Enter a valid phone number (7-15 digits).</string>
     <string name="dialog_add_client_confirm">Register</string>
     <string name="dialog_cancel">Cancel</string>

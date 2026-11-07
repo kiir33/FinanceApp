@@ -58,6 +58,14 @@ class BankRepository(private val db: AppDatabase) {
         return clientDao.searchClients("%$query%")
     }
 
+    suspend fun isPhoneNumberUnique(phoneNumber: String): Boolean {
+        return clientDao.countByPhoneNumber(phoneNumber) == 0
+    }
+
+    suspend fun isClientIdNameUnique(clientId: Int, name: String): Boolean {
+        return clientDao.countByClientIdAndName(clientId, name) == 0
+    }
+
     private suspend fun writeAuditLog(
         action: String,
         recordedByUserId: Long,

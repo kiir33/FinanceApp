@@ -30,4 +30,10 @@ interface ClientDao {
 
     @Query("SELECT COUNT(*) FROM clients")
     fun getClientCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM clients WHERE phoneNumber = :phoneNumber")
+    suspend fun countByPhoneNumber(phoneNumber: String): Int
+
+    @Query("SELECT COUNT(*) FROM clients WHERE clientId = :clientId AND name = :name")
+    suspend fun countByClientIdAndName(clientId: Int, name: String): Int
 }

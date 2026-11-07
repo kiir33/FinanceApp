@@ -194,10 +194,12 @@ class CsvImporter(
 
                 // 1. Insert Clients
                 for (row in memberResult.rows) {
+                    // Normalize phone number by removing non-digits
+                    val cleanPhoneNumber = row.phoneNumber.replace(Regex("[^0-9]"), "")
                     val client = Client(
                         clientId = row.memberId,
                         name = row.fullName,
-                        phoneNumber = row.phoneNumber,
+                        phoneNumber = cleanPhoneNumber,
                         address = row.address
                     )
                     val dbId = clientDao.insertClient(client)
@@ -213,6 +215,7 @@ class CsvImporter(
                     memberIdToUsername[row.memberId] = username
 
                     val tempPassword = row.phoneNumber.replace(Regex("[^0-9]"), "")
+                    val cleanPhoneNumber = tempPassword // already normalized
                     val salt = PasswordHasher.generateSalt()
                     val passwordHash = PasswordHasher.hashPassword(tempPassword, salt)
 
@@ -231,8 +234,8 @@ class CsvImporter(
                     )
                     userDao.insertUser(user)
 
-                    // Add to credentials sheet
-                    credentialsRows.add("${row.memberId},${row.fullName},$username,${row.phoneNumber},$tempPassword")
+                    // Add to credentials sheet (use normalized phone number)
+                    credentialsRows.add("${row.memberId},${row.fullName},$username,$cleanPhoneNumber,$tempPassword")
                 }
 
                 // 3. Insert Savings Accounts + Opening Transactions

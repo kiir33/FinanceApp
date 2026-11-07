@@ -154,8 +154,10 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
 
     fun createClient(name: String, phoneNumber: String, address: String, clientId: Int) {
         viewModelScope.launch {
+            // Normalize phone number by removing + and spaces
+            val cleanPhoneNumber = phoneNumber.replace("+", "").trim()
             val generatedId = repository.insertClient(
-                Client(clientId = clientId, name = name, phoneNumber = phoneNumber, address = address)
+                Client(clientId = clientId, name = name, phoneNumber = cleanPhoneNumber, address = address)
             )
             // Create a default savings account for the new client
             repository.insertSavingsAccount(
@@ -441,6 +443,20 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val client = repository.getClientByClientId(clientId)
             onResult(client == null)
+        }
+    }
+
+    fun checkPhoneNumberUnique(phoneNumber: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val isUnique = repository.isPhoneNumberUnique(phoneNumber)
+            onResult(isUnique)
+        }
+    }
+
+    fun checkClientIdNameUnique(clientId: Int, name: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val isUnique = repository.isClientIdNameUnique(clientId, name)
+            onResult(isUnique)
         }
     }
 

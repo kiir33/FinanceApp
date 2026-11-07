@@ -35,7 +35,7 @@ import com.example.financeapp.database.entities.User
         GroupTransaction::class,
         AuditLog::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -128,6 +128,59 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration from version 7 to 8: Add unique indices for phoneNumber and (clientId, name) on clients table
+        // This migration handles existing duplicates by keeping the first occurrence and removing duplicates
+        // Also normalizes phone numbers by removing + and spaces
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Step 1: Create a new table with the desired schema including unique indices
+                db.execSQL("""
+                    CREATE TABLE `clients_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `clientId` INTEGER NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `phoneNumber` TEXT NOT NULL,
+                        `address` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                
+                // Step 2: Create unique indices on the new table
+                db.execSQL("CREATE UNIQUE INDEX `index_clients_new_clientId` ON `clients_new` (`clientId`)")
+                db.execSQL("CREATE UNIQUE INDEX `index_clients_new_phoneNumber` ON `clients_new` (`phoneNumber`)")
+                db.execSQL("CREATE UNIQUE INDEX `index_clients_new_clientId_name` ON `clients_new` (`clientId`, `name`)")
+                
+                // Step 3: Copy data from old table to new table, handling duplicates
+                // For phoneNumber: normalize by removing + and spaces, keep first occurrence
+                // For clientId + name: keep first occurrence
+                // We use a CTE to identify rows to keep (first occurrence of each unique combination)
+                // Also normalize phoneNumber when storing
+                db.execSQL("""
+                    INSERT INTO `clients_new` (`id`, `clientId`, `name`, `phoneNumber`, `address`, `createdAt`)
+                    SELECT `id`, `clientId`, `name`, REPLACE(REPLACE(`phoneNumber`, '+', ''), ' ', ''), `address`, `createdAt`
+                    FROM (
+                        SELECT *,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY REPLACE(REPLACE(`phoneNumber`, '+', ''), ' ', '')
+                                ORDER BY `id`
+                            ) as phone_rn,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY `clientId`, `name`
+                                ORDER BY `id`
+                            ) as name_id_rn
+                        FROM `clients`
+                    )
+                    WHERE phone_rn = 1 AND name_id_rn = 1
+                """.trimIndent())
+                
+                // Step 4: Drop the old table
+                db.execSQL("DROP TABLE `clients`")
+                
+                // Step 5: Rename new table to original name
+                db.execSQL("ALTER TABLE `clients_new` RENAME TO `clients`")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -135,7 +188,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "finance_database.db"
                 )
-                    .addMigrations(MIGRATION_6_7)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
                     .build()
                 INSTANCE = instance
                 instance
