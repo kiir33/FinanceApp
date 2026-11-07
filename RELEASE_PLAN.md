@@ -1,6 +1,6 @@
 # FinanceApp Release Plan — v1.0.0 (Regular Release)
 
-**Status:** Draft — for verification. No code or issue changes made yet.
+**Status:** Implemented — changes committed on `release-v1.0.0`, PR #60 open for review.
 
 ## Goal
 
@@ -281,10 +281,19 @@ release-keystore.jks
 4. Any specific entries you want in the initial `CHANGELOG.md`?
 5. Once you confirm this plan, I'll update GitHub issue #22 to align with it and then implement the changes.
 
-## What I have NOT done yet
+## What remains before the first release
 
-- No edits to `app/build.gradle.kts`, `gradle.properties`, the CI workflow, `IMPLEMENTATION_PLAN.md`, `QA_TEST_PLAN.md`, `.gitignore`, or `CHANGELOG.md`.
-- No changes to GitHub secrets or issue #22.
-- No git tag created.
+1. **Review and merge PR #60** — repo rules require a PR + passing "Build Debug APK" status check before `main` can be updated.
+2. **Add 4 GitHub Actions secrets** (repo Settings → Secrets and variables → Actions):
+   - `RELEASE_KEYSTORE_BASE64` → base64 of `release-keystore.jks`
+   - `RELEASE_STORE_PASSWORD` → keystore store password
+   - `RELEASE_KEY_ALIAS` → keystore key alias
+   - `RELEASE_KEY_PASSWORD` → keystore key password
+3. **Push the tag** (after merge + secrets):
+   ```bash
+   git tag -a v1.0.0 -m "Release v1.0.0"
+   git push origin v1.0.0
+   ```
+   This triggers the release CI: builds the signed APK and publishes a GitHub Release (not draft, not prerelease).
 
-Please review the draft above and let me know what to adjust before I implement.
+The keystore file itself is **not** in the repo — only the base64-encoded value goes into the GitHub secret.

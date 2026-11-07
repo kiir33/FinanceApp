@@ -17,5 +17,4 @@
 *.jks
 *.keystore
 *.key
-release-keystore.jks
 local.properties

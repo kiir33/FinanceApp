@@ -14,7 +14,6 @@ All notable changes to FinanceApp are documented in this file.
 - **Security Hardening** — `FLAG_SECURE` to prevent screenshots/recording, `android:allowBackup="false"`, non-debuggable release build.
 
 ### Commits
-- `9da1f22` feat: safe worktree removal and stale cleanup — git worktree commands
 - `8fab0f7` feat: agentic workflow changes — rules and enforcement (#58)
 - `2f37b7c` feat(member): Auto-suggest next Member ID in Add Member form (#54)
 - `fb1022d` feat(loan): Add configurable loan-to-savings ratio with Settings screen (#52) (#56)
