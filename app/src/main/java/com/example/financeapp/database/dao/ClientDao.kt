@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ClientDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertClient(client: Client): Long
 
     @Update
@@ -30,4 +30,16 @@ interface ClientDao {
 
     @Query("SELECT COUNT(*) FROM clients")
     fun getClientCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM clients WHERE phoneNumber = :phoneNumber")
+    suspend fun countByPhoneNumber(phoneNumber: String): Int
+
+    @Query("SELECT phoneNumber FROM clients")
+    suspend fun getAllPhoneNumbers(): List<String>
+
+    @Query("SELECT clientId FROM clients")
+    suspend fun getAllClientIds(): List<Int>
+
+    @Query("SELECT COUNT(*) FROM clients WHERE clientId = :clientId AND name = :name")
+    suspend fun countByClientIdAndName(clientId: Int, name: String): Int
 }

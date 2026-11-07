@@ -19,6 +19,7 @@ import com.example.financeapp.database.entities.LoanRepayment
 import com.example.financeapp.database.entities.SavingsAccount
 import com.example.financeapp.database.entities.SavingsTransaction
 import com.example.financeapp.database.entities.User
+import com.example.financeapp.util.normalizePhoneNumber
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -34,6 +35,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class BankViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -170,9 +172,17 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
 
     fun createClient(name: String, phoneNumber: String, address: String, clientId: Int) {
         viewModelScope.launch {
-            val generatedId = repository.insertClient(
-                Client(clientId = clientId, name = name, phoneNumber = phoneNumber, address = address)
-            )
+            val cleanPhoneNumber = normalizePhoneNumber(phoneNumber)
+            // The dialog validates uniqueness first, but the DB unique indices are the final guard
+            // against races with a concurrent insert. Swallow that constraint failure instead of
+            // crashing, and do not create an orphan savings account.
+            val generatedId = try {
+                repository.insertClient(
+                    Client(clientId = clientId, name = name, phoneNumber = cleanPhoneNumber, address = address)
+                )
+            } catch (e: android.database.sqlite.SQLiteConstraintException) {
+                return@launch
+            }
             // Create a default savings account for the new client
             repository.insertSavingsAccount(
                 SavingsAccount(clientId = generatedId, accountNumber = "SAV-${100000 + generatedId}")
@@ -262,7 +272,7 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
 
             if (amount > maxLoanAmount) {
                 val ratioPercent = (ratio * 100).toInt()
-                onError("Loan amount exceeds ${ratioPercent}% savings limit. Maximum allowed: Rs. ${String.format("%,.0f", maxLoanAmount)}")
+                onError("Loan amount exceeds ${ratioPercent}% savings limit. Maximum allowed: Rs. ${String.format(Locale.getDefault(), "%,.0f", maxLoanAmount)}")
                 return@launch
             }
 
@@ -283,7 +293,27 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
                 ),
                 recordedByUserId = currentUserId
             )
-            if (success) onSuccess() else onError("Failed to disburse loan - treasury funds insufficient.")
+            if (success) {
+                onSuccess()
+            } else {
+                // The repository re-validates atomically. Re-read the persisted ratio/savings so a
+                // rejection caused by the savings cap still reports the correct maximum instead of
+                // always blaming the treasury.
+                val latestRatio = repository.getLoanToSavingsRatio()
+                val latestBorrowerSavings = repository.getSavingsAccountByClientId(clientId)?.balance ?: 0.0
+                val latestGuarantorSavings = if (guarantorId != null) {
+                    repository.getSavingsAccountByClientId(guarantorId)?.balance ?: 0.0
+                } else {
+                    0.0
+                }
+                val latestMaxLoanAmount = (latestBorrowerSavings + latestGuarantorSavings) * latestRatio
+                if (amount > latestMaxLoanAmount) {
+                    val ratioPercent = (latestRatio * 100).toInt()
+                    onError("Loan amount exceeds ${ratioPercent}% savings limit. Maximum allowed: Rs. ${String.format(Locale.getDefault(), "%,.0f", latestMaxLoanAmount)}")
+                } else {
+                    onError("Failed to disburse loan - treasury funds insufficient.")
+                }
+            }
         }
     }
 
@@ -476,6 +506,20 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val client = repository.getClientByClientId(clientId)
             onResult(client == null)
+        }
+    }
+
+    fun checkPhoneNumberUnique(phoneNumber: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val isUnique = repository.isPhoneNumberUnique(phoneNumber)
+            onResult(isUnique)
+        }
+    }
+
+    fun checkClientIdNameUnique(clientId: Int, name: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val isUnique = repository.isClientIdNameUnique(clientId, name)
+            onResult(isUnique)
         }
     }
 

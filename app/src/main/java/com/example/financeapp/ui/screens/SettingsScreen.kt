@@ -39,6 +39,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,28 +52,33 @@ import androidx.compose.ui.unit.sp
 import com.example.financeapp.R
 import com.example.financeapp.Settings
 import com.example.financeapp.ui.main.BankViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigate: (NavKey) -> Unit,
     onBack: () -> Unit,
+    viewModel: BankViewModel,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val viewModel: BankViewModel = viewModel()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = remember { kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main) }
+    val scope = rememberCoroutineScope()
 
     val ratio by viewModel.loanToSavingsRatio.collectAsState()
     var ratioInput by remember { mutableStateOf((ratio * 100).toInt().toString()) }
+    var hasUserEdited by remember { mutableStateOf(false) }
     var ratioError by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
+
+    // The ratio is loaded asynchronously, so keep the field in sync until the user edits it.
+    LaunchedEffect(ratio) {
+        if (!hasUserEdited) {
+            ratioInput = (ratio * 100).toInt().toString()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -148,8 +154,9 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = ratioInput,
                         onValueChange = { input ->
-                            if (input.all { it.isDigit() }) {
+                            if (input.all { it.isDigit() } && input.length <= 3) {
                                 ratioInput = input
+                                hasUserEdited = true
                                 ratioError = null
                             }
                         },
@@ -184,11 +191,12 @@ fun SettingsScreen(
                         value = sliderValue,
                         onValueChange = { newValue ->
                             ratioInput = newValue.toInt().toString()
+                            hasUserEdited = true
                             ratioError = null
                         },
                         onValueChangeFinished = {},
                         valueRange = 10f..200f,
-                        steps = 19,
+                        steps = 189,
                         modifier = Modifier.fillMaxWidth(),
                         colors = SliderDefaults.colors(
                             thumbColor = MaterialTheme.colorScheme.primary,
@@ -232,6 +240,7 @@ fun SettingsScreen(
                             viewModel.updateLoanToSavingsRatio(ratioDouble,
                                 onSuccess = {
                                     isSaving = false
+                                    hasUserEdited = false
                                     scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.settings_saved)) }
                                 },
                                 onError = { error ->

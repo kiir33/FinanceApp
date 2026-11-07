@@ -237,6 +237,7 @@ fun MainNavigation(application: Application) {
                 SettingsScreen(
                     onNavigate = { key -> backStack.add(key) },
                     onBack = { backStack.removeLastOrNull() },
+                    viewModel = viewModel,
                     modifier = Modifier.safeDrawingPadding()
                 )
             }

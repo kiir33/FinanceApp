@@ -480,6 +480,12 @@ fun DashboardScreen(
             },
             checkClientIdUnique = { id, callback ->
                 viewModel.checkClientIdUnique(id, callback)
+            },
+            checkPhoneNumberUnique = { phone, callback ->
+                viewModel.checkPhoneNumberUnique(phone, callback)
+            },
+            checkClientIdNameUnique = { id, name, callback ->
+                viewModel.checkClientIdNameUnique(id, name, callback)
             }
         )
     }

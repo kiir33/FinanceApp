@@ -27,6 +27,7 @@ data class User(
     val salt: String,                 // 16-byte hex-encoded random salt
     val role: String,                 // "ADMIN" or "MEMBER"
     val clientId: Long? = null,       // Linked Client ID (null for pure admins)
+    val phoneNumber: String? = null,  // Stored for pure admins (admins have no Client row)
     val isActive: Boolean = true,
     val failedAttempts: Int = 0,      // Max 5 before temporary lock
     val lockedUntil: Long? = null,    // Lockout epoch timestamp (millis)

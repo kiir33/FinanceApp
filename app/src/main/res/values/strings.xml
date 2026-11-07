@@ -38,6 +38,8 @@
     <string name="dialog_add_client_error_required">All fields are required.</string>
     <string name="dialog_add_client_error_invalid_id">Member ID must be a valid integer.</string>
     <string name="dialog_add_client_error_duplicate_id">Member ID must be unique.</string>
+    <string name="dialog_add_client_error_duplicate_phone">Phone number already registered.</string>
+    <string name="dialog_add_client_error_duplicate_name_id">Member with this ID and name already exists.</string>
     <string name="dialog_add_client_error_invalid_phone">Enter a valid phone number (7-15 digits).</string>
     <string name="dialog_add_client_confirm">Register</string>
     <string name="dialog_cancel">Cancel</string>
@@ -259,8 +261,6 @@
     <string name="admin_setup_name_hint">Enter your full name</string>
     <string name="admin_setup_phone_label">Phone Number</string>
     <string name="admin_setup_phone_hint">Enter phone number (7-15 digits)</string>
-    <string name="admin_setup_client_id_label">Member ID</string>
-    <string name="admin_setup_client_id_hint">Your member ID (e.g., 1)</string>
     <string name="admin_setup_password_label">Master Password</string>
     <string name="admin_setup_password_hint">Min 8 chars, letters &amp; numbers</string>
     <string name="admin_setup_confirm_password_label">Confirm Password</string>
@@ -272,8 +272,6 @@
     <string name="admin_setup_error_name_required">Full name is required</string>
     <string name="admin_setup_error_phone_required">Phone number is required</string>
     <string name="admin_setup_error_invalid_phone">Enter a valid phone number (7-15 digits)</string>
-    <string name="admin_setup_error_client_id_required">Member ID is required</string>
-    <string name="admin_setup_error_invalid_client_id">Member ID must be a positive integer</string>
     <string name="admin_setup_error_password_required">Password is required</string>
     <string name="admin_setup_error_password_length">Password must be at least 8 characters</string>
     <string name="admin_setup_error_password_letter">Password must contain at least one letter</string>

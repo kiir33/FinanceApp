@@ -7,6 +7,7 @@ import com.example.financeapp.database.entities.Client
 import com.example.financeapp.database.entities.Loan
 import com.example.financeapp.database.entities.SavingsAccount
 import com.example.financeapp.database.entities.User
+import com.example.financeapp.util.normalizePhoneNumber
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -194,10 +195,11 @@ class CsvImporter(
 
                 // 1. Insert Clients
                 for (row in memberResult.rows) {
+                    val cleanPhoneNumber = normalizePhoneNumber(row.phoneNumber)
                     val client = Client(
                         clientId = row.memberId,
                         name = row.fullName,
-                        phoneNumber = row.phoneNumber,
+                        phoneNumber = cleanPhoneNumber,
                         address = row.address
                     )
                     val dbId = clientDao.insertClient(client)
@@ -212,7 +214,8 @@ class CsvImporter(
                     existingUsernames.add(username)
                     memberIdToUsername[row.memberId] = username
 
-                    val tempPassword = row.phoneNumber.replace(Regex("[^0-9]"), "")
+                    val tempPassword = normalizePhoneNumber(row.phoneNumber)
+                    val cleanPhoneNumber = tempPassword // already normalized
                     val salt = PasswordHasher.generateSalt()
                     val passwordHash = PasswordHasher.hashPassword(tempPassword, salt)
 
@@ -231,8 +234,8 @@ class CsvImporter(
                     )
                     userDao.insertUser(user)
 
-                    // Add to credentials sheet
-                    credentialsRows.add("${row.memberId},${row.fullName},$username,${row.phoneNumber},$tempPassword")
+                    // Add to credentials sheet (use normalized phone number)
+                    credentialsRows.add("${row.memberId},${row.fullName},$username,$cleanPhoneNumber,$tempPassword")
                 }
 
                 // 3. Insert Savings Accounts + Opening Transactions
@@ -324,10 +327,15 @@ class CsvImporter(
         val errors: List<ValidationError>
     )
 
-    private fun parseAndValidateMembers(input: InputStream): ParseResult<MemberRow> {
+    private suspend fun parseAndValidateMembers(input: InputStream): ParseResult<MemberRow> {
         val rows = mutableListOf<MemberRow>()
         val errors = mutableListOf<ValidationError>()
         val seenMemberIds = mutableSetOf<Int>()
+        val seenPhones = mutableSetOf<String>()
+        // Phone numbers already in the DB would collide with the unique index during commit.
+        val existingPhones = clientDao.getAllPhoneNumbers().map { normalizePhoneNumber(it) }.toSet()
+        // Member IDs already in the DB would collide with the unique clientId index during commit.
+        val existingClientIds = clientDao.getAllClientIds().toSet()
         val reader = BufferedReader(InputStreamReader(input, StandardCharsets.UTF_8))
         var lineNumber = 0
         var isHeader = true
@@ -360,6 +368,8 @@ class CsvImporter(
                     errors.add(ValidationError(lineNumber, "Member_ID", "Must be a valid integer"))
                 } else if (memberId in seenMemberIds) {
                     errors.add(ValidationError(lineNumber, "Member_ID", "Duplicate member ID"))
+                } else if (memberId in existingClientIds) {
+                    errors.add(ValidationError(lineNumber, "Member_ID", "Member ID already exists"))
                 } else if (memberId <= 0) {
                     errors.add(ValidationError(lineNumber, "Member_ID", "Must be positive"))
                 } else {
@@ -374,9 +384,15 @@ class CsvImporter(
 
                 // Phone_Number
                 val phoneNumber = cols[2].trim()
-                val cleanPhone = phoneNumber.replace(Regex("[^0-9]"), "")
-                if (cleanPhone.isEmpty() || cleanPhone.length !in 7..15) {
+                val cleanPhone = normalizePhoneNumber(phoneNumber)
+                if (cleanPhone.length !in 7..15) {
                     errors.add(ValidationError(lineNumber, "Phone_Number", "Invalid phone number (7-15 digits)"))
+                } else if (cleanPhone in seenPhones) {
+                    errors.add(ValidationError(lineNumber, "Phone_Number", "Duplicate phone number in CSV"))
+                } else if (cleanPhone in existingPhones) {
+                    errors.add(ValidationError(lineNumber, "Phone_Number", "Phone number already belongs to an existing member"))
+                } else {
+                    seenPhones.add(cleanPhone)
                 }
 
                 // Address

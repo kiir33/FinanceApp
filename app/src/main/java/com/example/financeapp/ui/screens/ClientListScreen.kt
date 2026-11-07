@@ -54,9 +54,7 @@ import com.example.financeapp.R
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import com.example.financeapp.ui.main.BankViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.example.financeapp.util.normalizePhoneNumber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -223,6 +221,12 @@ fun ClientListScreen(
             },
             checkClientIdUnique = { id, callback ->
                 viewModel.checkClientIdUnique(id, callback)
+            },
+            checkPhoneNumberUnique = { phone, callback ->
+                viewModel.checkPhoneNumberUnique(phone, callback)
+            },
+            checkClientIdNameUnique = { id, name, callback ->
+                viewModel.checkClientIdNameUnique(id, name, callback)
             }
         )
     }
@@ -232,7 +236,9 @@ fun ClientListScreen(
 fun AddClientDialog(
     onDismiss: () -> Unit,
     onConfirm: (name: String, phone: String, address: String, clientId: Int) -> Unit,
-    checkClientIdUnique: (Int, (Boolean) -> Unit) -> Unit
+    checkClientIdUnique: (Int, (Boolean) -> Unit) -> Unit,
+    checkPhoneNumberUnique: (String, (Boolean) -> Unit) -> Unit,
+    checkClientIdNameUnique: (Int, String, (Boolean) -> Unit) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -299,8 +305,8 @@ fun AddClientDialog(
             TextButton(
                 onClick = {
                     val clientIdVal = clientIdStr.toIntOrNull()
-                    val cleanPhone = phone.replace("+", "").trim()
-                    val isPhoneValid = cleanPhone.isNotEmpty() && cleanPhone.all { it.isDigit() } && cleanPhone.length in 7..15
+                    val cleanPhone = normalizePhoneNumber(phone)
+                    val isPhoneValid = cleanPhone.length in 7..15
                     
                     if (name.isBlank() || phone.isBlank() || address.isBlank() || clientIdStr.isBlank()) {
                         errorMsgResId = R.string.dialog_add_client_error_required
@@ -311,7 +317,19 @@ fun AddClientDialog(
                     } else {
                         checkClientIdUnique(clientIdVal) { isUnique ->
                             if (isUnique) {
-                                onConfirm(name, phone, address, clientIdVal)
+                                checkPhoneNumberUnique(cleanPhone) { isPhoneUnique ->
+                                    if (isPhoneUnique) {
+                                        checkClientIdNameUnique(clientIdVal, name) { isNameIdUnique ->
+                                            if (isNameIdUnique) {
+                                                onConfirm(name, cleanPhone, address, clientIdVal)
+                                            } else {
+                                                errorMsgResId = R.string.dialog_add_client_error_duplicate_name_id
+                                            }
+                                        }
+                                    } else {
+                                        errorMsgResId = R.string.dialog_add_client_error_duplicate_phone
+                                    }
+                                }
                             } else {
                                 errorMsgResId = R.string.dialog_add_client_error_duplicate_id
                             }

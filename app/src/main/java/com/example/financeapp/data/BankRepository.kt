@@ -12,6 +12,7 @@ import com.example.financeapp.database.entities.GroupTransaction
 import com.example.financeapp.database.entities.GroupTxType
 import com.example.financeapp.database.entities.Loan
 import com.example.financeapp.database.entities.LoanRepayment
+import com.example.financeapp.util.normalizePhoneNumber
 import com.example.financeapp.database.entities.SavingsAccount
 import com.example.financeapp.database.entities.SavingsTransaction
 import com.example.financeapp.database.entities.User
@@ -53,11 +54,19 @@ class BankRepository(private val db: AppDatabase) {
     }
 
     suspend fun getClientByClientId(clientId: Int): Client? {
-        return clientDao.getClientById(clientId.toLong())
+        return clientDao.getClientByClientId(clientId)
     }
 
     fun searchClients(query: String): Flow<List<Client>> {
         return clientDao.searchClients("%$query%")
+    }
+
+    suspend fun isPhoneNumberUnique(phoneNumber: String): Boolean {
+        return clientDao.countByPhoneNumber(normalizePhoneNumber(phoneNumber)) == 0
+    }
+
+    suspend fun isClientIdNameUnique(clientId: Int, name: String): Boolean {
+        return clientDao.countByClientIdAndName(clientId, name) == 0
     }
 
     private suspend fun writeAuditLog(
@@ -203,11 +212,11 @@ class BankRepository(private val db: AppDatabase) {
     ): Boolean {
         return withContext(Dispatchers.IO) {
             db.withTransaction {
-                // 1. Insert loan
-                val loanId = loanDao.insertLoan(loan)
-
-                // 2. Savings Cap Check (configurable ratio of Borrower + Guarantor savings combined).
+                // 1. Savings Cap Check (configurable ratio of Borrower + Guarantor savings combined).
                 // Executed inside the transaction so concurrent disbursements cannot bypass it.
+                // IMPORTANT: validate before inserting anything. `return@withTransaction false`
+                // commits the transaction (only a thrown exception rolls it back), so the loan must
+                // not be inserted until every check has passed.
                 val borrowerSavings = savingsDao.getAccountByClientId(loan.clientId).first()?.balance ?: 0.0
                 val guarantorSavings = loan.guarantorId
                     ?.let { savingsDao.getAccountByClientId(it).first()?.balance }
@@ -223,9 +232,12 @@ class BankRepository(private val db: AppDatabase) {
                     return@withTransaction false
                 }
 
-                // 3. Treasury sync - check treasury cash balance
+                // 2. Treasury sync - check treasury cash balance
                 val groupAccount = groupAccountDao.getGroupAccountById() ?: return@withTransaction false
                 if (groupAccount.cashBalance < loan.amount) return@withTransaction false
+
+                // 3. All checks passed - now persist the loan.
+                val loanId = loanDao.insertLoan(loan)
 
                 val updatedGroupAccount = groupAccount.copy(
                     cashBalance = groupAccount.cashBalance - loan.amount,
