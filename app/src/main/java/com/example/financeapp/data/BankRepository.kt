@@ -58,6 +58,10 @@ class BankRepository(private val db: AppDatabase) {
         return clientDao.getClientByClientId(clientId)
     }
 
+    suspend fun getMaxClientId(): Int {
+        return clientDao.getMaxClientId() ?: 0
+    }
+
     fun searchClients(query: String): Flow<List<Client>> {
         return clientDao.searchClients("%$query%")
     }

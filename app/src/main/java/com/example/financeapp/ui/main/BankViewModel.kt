@@ -509,6 +509,10 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    suspend fun getNextClientId(): Int {
+        return repository.getMaxClientId() + 1
+    }
+
     fun checkPhoneNumberUnique(phoneNumber: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             val isUnique = repository.isPhoneNumberUnique(phoneNumber)

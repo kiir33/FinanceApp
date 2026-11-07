@@ -53,6 +53,7 @@ import com.example.financeapp.R
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import com.example.financeapp.ui.main.BankViewModel
+import androidx.compose.runtime.LaunchedEffect
 import com.example.financeapp.util.normalizePhoneNumber
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,6 +67,17 @@ fun ClientListScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val clients by viewModel.searchResults.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var suggestedClientId by remember { mutableStateOf(0) }
+
+    // Fetch the suggested client ID when the dialog opens; reset it once the dialog closes so
+    // the next open always shows a fresh value rather than the previous suggestion.
+    LaunchedEffect(showAddDialog) {
+        if (showAddDialog) {
+            suggestedClientId = viewModel.getNextClientId()
+        } else {
+            suggestedClientId = 0
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -211,7 +223,9 @@ fun ClientListScreen(
         }
     }
 
-    if (showAddDialog) {
+    // Only compose the dialog once the suggestion has loaded (0 means "still loading"), otherwise
+    // the Member ID field would initialize with a stale 0.
+    if (showAddDialog && suggestedClientId > 0) {
         AddClientDialog(
             onDismiss = { showAddDialog = false },
             onConfirm = { name, phone, address, clientId ->
@@ -226,7 +240,8 @@ fun ClientListScreen(
             },
             checkClientIdNameUnique = { id, name, callback ->
                 viewModel.checkClientIdNameUnique(id, name, callback)
-            }
+            },
+            suggestedClientId = suggestedClientId
         )
     }
 }
@@ -237,12 +252,13 @@ fun AddClientDialog(
     onConfirm: (name: String, phone: String, address: String, clientId: Int) -> Unit,
     checkClientIdUnique: (Int, (Boolean) -> Unit) -> Unit,
     checkPhoneNumberUnique: (String, (Boolean) -> Unit) -> Unit,
-    checkClientIdNameUnique: (Int, String, (Boolean) -> Unit) -> Unit
+    checkClientIdNameUnique: (Int, String, (Boolean) -> Unit) -> Unit,
+    suggestedClientId: Int
 ) {
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
-    var clientIdStr by remember { mutableStateOf("") }
+    var clientIdStr by remember(suggestedClientId) { mutableStateOf(suggestedClientId.toString()) }
 
     var errorMsgResId by remember { mutableStateOf<Int?>(null) }
 
