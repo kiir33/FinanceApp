@@ -215,7 +215,7 @@ fun AddClientDialog(
     onDismiss: () -> Unit,
     onConfirm: (name: String, phone: String, address: String, clientId: Int) -> Unit,
     checkClientIdUnique: (Int, (Boolean) -> Unit) -> Unit,
-    suggestedClientId: Int = 0
+    suggestedClientId: Int
 ) {
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
