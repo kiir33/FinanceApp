@@ -9,6 +9,8 @@
     <string name="dashboard_total_loans">Total Loans</string>
     <string name="dashboard_manage_clients">Manage Members</string>
     <string name="dashboard_backup_restore">Backup &amp; Restore</string>
+    <string name="dashboard_logout">Logout</string>
+    <string name="desc_logout">Logout</string>
     <string name="dashboard_active_client_base">Active Members</string>
     <string name="dashboard_registered_accounts">Registered accounts</string>
     <string name="dashboard_offline_footer">100% Offline Secure Local Database</string>
@@ -309,6 +311,7 @@
     <string name="member_dashboard_loading">Loading your account...</string>
     <string name="member_dashboard_no_session">No active session</string>
     <string name="member_dashboard_change_password">Change Password</string>
+    <string name="member_dashboard_logout">Logout</string>
 
     <!-- Change Password Dialog -->
     <string name="change_password_title">Change Password</string>
