@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Visibility
@@ -29,6 +30,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,6 +56,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.draw.clip
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.NavKey
+import com.example.financeapp.R
+import com.example.financeapp.Settings
 import kotlinx.coroutines.withContext
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -61,7 +67,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.financeapp.R
 import com.example.financeapp.auth.AuthService
 import com.example.financeapp.auth.PasswordHasher
 import com.example.financeapp.auth.SessionManager
@@ -99,8 +104,30 @@ fun UserManagementScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showCreateUserDialog = true }) {
-                        Icon(imageVector = Icons.Default.PersonAdd, contentDescription = stringResource(R.string.user_management_add_user))
+                    var expanded by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { showCreateUserDialog = true }) {
+                            Icon(imageVector = Icons.Default.PersonAdd, contentDescription = stringResource(R.string.user_management_add_user))
+                        }
+                        IconButton(onClick = { expanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = stringResource(R.string.desc_menu),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.settings_title)) },
+                                onClick = {
+                                    expanded = false
+                                    onNavigate(Settings)
+                                }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

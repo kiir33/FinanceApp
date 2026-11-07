@@ -411,4 +411,18 @@
     <string name="group_tx_type_expense">Expense</string>
     <string name="group_tx_type_bank_deposit">Cash → Bank Transfer</string>
     <string name="group_tx_type_bank_withdrawal">Bank → Cash Transfer</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_loan_to_savings_ratio_title">Loan-to-Savings Ratio</string>
+    <string name="settings_loan_to_savings_ratio_subtitle">Configure the maximum loan amount as a percentage of combined savings</string>
+    <string name="settings_loan_to_savings_ratio_label">Loan-to-Savings Ratio (%)</string>
+    <string name="settings_loan_to_savings_ratio_hint">Allowed range: 10% to 200%</string>
+    <string name="settings_current_value_format">Current: %1$d%%</string>
+    <string name="settings_range_hint">Range: 10% - 200%</string>
+    <string name="settings_save">Save</string>
+    <string name="settings_saved">Settings saved successfully</string>
+    <string name="settings_error_ratio_range">Please enter a value between 10 and 200</string>
+    <string name="settings_loan_to_savings_info_title">About Loan-to-Savings Ratio</string>
+    <string name="settings_loan_to_savings_info_body" formatted="false">This setting controls the maximum loan amount a member can borrow based on their savings (plus guarantor\'s savings if applicable). The ratio is applied to the combined savings of the borrower and guarantor. For example, at 80%, a member with Rs. 10,000 savings can borrow up to Rs. 8,000. Default is 80%.</string>
 </resources>

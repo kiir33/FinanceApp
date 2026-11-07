@@ -2,6 +2,7 @@ package com.example.financeapp.data
 
 import androidx.room.withTransaction
 import com.example.financeapp.database.AppDatabase
+import com.example.financeapp.database.dao.AppSettingsDao
 import com.example.financeapp.database.dao.GroupAccountDao
 import com.example.financeapp.database.dao.GroupTransactionDao
 import com.example.financeapp.database.entities.AuditLog
@@ -27,6 +28,7 @@ class BankRepository(private val db: AppDatabase) {
     private val groupTransactionDao = db.groupTransactionDao()
     private val userDao = db.userDao()
     private val auditLogDao = db.auditLogDao()
+    private val appSettingsDao = db.appSettingsDao()
 
     val allClients: Flow<List<Client>> = clientDao.getAllClients()
     val allUsers: Flow<List<User>> = userDao.getAllUsers()
@@ -87,6 +89,10 @@ class BankRepository(private val db: AppDatabase) {
 
     suspend fun getSavingsAccountById(accountId: Long): SavingsAccount? {
         return savingsDao.getAccountById(accountId)
+    }
+
+    suspend fun getSavingsAccountByClientId(clientId: Long): SavingsAccount? {
+        return savingsDao.getAccountByClientId(clientId).first()
     }
 
     // Savings Transactions with Treasury Sync
@@ -200,13 +206,18 @@ class BankRepository(private val db: AppDatabase) {
                 // 1. Insert loan
                 val loanId = loanDao.insertLoan(loan)
 
-                // 2. Savings Cap Check (80% of Borrower + Guarantor savings combined).
+                // 2. Savings Cap Check (configurable ratio of Borrower + Guarantor savings combined).
                 // Executed inside the transaction so concurrent disbursements cannot bypass it.
                 val borrowerSavings = savingsDao.getAccountByClientId(loan.clientId).first()?.balance ?: 0.0
                 val guarantorSavings = loan.guarantorId
                     ?.let { savingsDao.getAccountByClientId(it).first()?.balance }
                     ?: 0.0
-                val maxLoanAmount = (borrowerSavings + guarantorSavings) * 0.8
+
+                // Get configurable loan-to-savings ratio (default 0.8 = 80%)
+                val ratioStr = appSettingsDao.getSettingValue("loan_to_savings_ratio") ?: "0.8"
+                val loanToSavingsRatio = ratioStr.toDoubleOrNull() ?: 0.8
+
+                val maxLoanAmount = (borrowerSavings + guarantorSavings) * loanToSavingsRatio
 
                 if (loan.amount > maxLoanAmount) {
                     return@withTransaction false
@@ -480,6 +491,27 @@ class BankRepository(private val db: AppDatabase) {
                     action = "UPDATE_BANK_INFO",
                     recordedByUserId = 1,
                     details = "Updated bank info: $bankName, $bankAccountNumber"
+                )
+                true
+            }
+        }
+    }
+
+    // Settings
+    suspend fun getLoanToSavingsRatio(): Double {
+        val ratioStr = appSettingsDao.getSettingValue("loan_to_savings_ratio") ?: "0.8"
+        return ratioStr.toDoubleOrNull() ?: 0.8
+    }
+
+    suspend fun setLoanToSavingsRatio(ratio: Double): Boolean {
+        return withContext(Dispatchers.IO) {
+            db.withTransaction {
+                val clampedRatio = ratio.coerceIn(0.1, 2.0)
+                appSettingsDao.insertSetting(
+                    com.example.financeapp.database.entities.AppSettings(
+                        key = "loan_to_savings_ratio",
+                        value = clampedRatio.toString()
+                    )
                 )
                 true
             }

@@ -55,6 +55,7 @@ import com.example.financeapp.ui.screens.MemberDashboardScreen
 import com.example.financeapp.ui.screens.ReportsDashboardScreen
 import com.example.financeapp.ui.screens.SavingsListScreen
 import com.example.financeapp.ui.screens.UserManagementScreen
+import com.example.financeapp.ui.screens.SettingsScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -177,13 +178,6 @@ fun MainNavigation(application: Application) {
                     modifier = Modifier.safeDrawingPadding()
                 )
             }
-            entry<BackupRestore> {
-                BackupRestoreScreen(
-                    onBack = { backStack.removeLastOrNull() },
-                    viewModel = viewModel,
-                    modifier = Modifier.safeDrawingPadding()
-                )
-            }
             entry<SavingsList> {
                 SavingsListScreen(
                     onNavigate = { key -> backStack.add(key) },
@@ -218,6 +212,7 @@ fun MainNavigation(application: Application) {
             }
             entry<ReportsDashboard> {
                 ReportsDashboardScreen(
+                    onNavigate = { key -> backStack.add(key) },
                     onBack = { backStack.removeLastOrNull() },
                     viewModel = viewModel,
                     modifier = Modifier.safeDrawingPadding()
@@ -225,6 +220,7 @@ fun MainNavigation(application: Application) {
             }
             entry<CsvImportView> {
                 CsvImportScreen(
+                    onNavigate = { key -> backStack.add(key) },
                     onBack = { backStack.removeLastOrNull() },
                     viewModel = viewModel,
                     modifier = Modifier.safeDrawingPadding()
@@ -234,6 +230,21 @@ fun MainNavigation(application: Application) {
                 UserManagementScreen(
                     onNavigate = { key -> backStack.add(key) },
                     onBack = { backStack.removeLastOrNull() },
+                    modifier = Modifier.safeDrawingPadding()
+                )
+            }
+            entry<Settings> {
+                SettingsScreen(
+                    onNavigate = { key -> backStack.add(key) },
+                    onBack = { backStack.removeLastOrNull() },
+                    modifier = Modifier.safeDrawingPadding()
+                )
+            }
+            entry<BackupRestore> {
+                BackupRestoreScreen(
+                    onNavigate = { key -> backStack.add(key) },
+                    onBack = { backStack.removeLastOrNull() },
+                    viewModel = viewModel,
                     modifier = Modifier.safeDrawingPadding()
                 )
             }

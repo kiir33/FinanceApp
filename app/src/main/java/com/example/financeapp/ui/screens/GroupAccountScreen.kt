@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Money
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.AlertDialog
@@ -33,6 +34,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,14 +61,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.navigation3.runtime.NavKey
+import com.example.financeapp.R
+import com.example.financeapp.Settings
+import com.example.financeapp.GroupAccountView
+import com.example.financeapp.ui.main.BankViewModel
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.financeapp.R
 import com.example.financeapp.database.entities.GroupAccount
 import com.example.financeapp.database.entities.GroupTransaction
 import com.example.financeapp.database.entities.GroupTxType
 import com.example.financeapp.database.entities.displayName
-import com.example.financeapp.ui.main.BankViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -102,8 +109,30 @@ fun GroupAccountScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showEditBankInfoDialog = true }) {
-                        Icon(imageVector = Icons.Default.Edit, contentDescription = stringResource(R.string.group_account_edit_bank_info))
+                    var expanded by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { showEditBankInfoDialog = true }) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = stringResource(R.string.group_account_edit_bank_info))
+                        }
+                        IconButton(onClick = { expanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = stringResource(R.string.desc_menu),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.settings_title)) },
+                                onClick = {
+                                    expanded = false
+                                    onNavigate(Settings)
+                                }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
