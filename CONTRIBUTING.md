@@ -24,12 +24,25 @@ Use the template in `.github/PULL_REQUEST_TEMPLATE.md` when opening a PR.
 - Fixes: `fix/<description>`
 - CI/Build: `ci/<description>`
 
-### PR Title Casing
-PR titles must use proper casing. The descriptive portion should be Title Case (capitalize significant words; keep prepositions/articles lowercase unless first).
+### PR Title Casing — Release PRs
 
-Example: `Feat: First Regular Release v1.0.0 — Signing + Automated Version Bump`
+Release PRs must follow this exact format:
 
-Do not use all-lowercase titles (e.g. `feat: first regular release`).
+```
+Release: v1.0.0
+```
+
+Or with a release type for major/minor/patch:
+
+```
+Major Release: v2.0.0
+Minor Release: v1.1.0
+Patch Release: v1.0.1
+```
+
+Do not use lowercase prefixes (e.g. `release: v1.0.0` or `feat: first release`). Capitalize `Release` and use the `vx.x.x` version format.
+
+Non-release PRs may use conventional commit prefixes (`feat:`, `fix:`, `ci:`, etc.) with Title Case.
 
 ### Review Process
 All PRs require review and passing CI checks before merging.
