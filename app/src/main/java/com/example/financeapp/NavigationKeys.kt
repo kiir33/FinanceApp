@@ -47,3 +47,6 @@ data object UserManagement : NavKey
 
 @Serializable
 data object AuditLogView : NavKey
+
+@Serializable
+data object Settings : NavKey

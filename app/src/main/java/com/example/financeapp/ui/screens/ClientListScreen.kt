@@ -2,6 +2,7 @@ package com.example.financeapp.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,10 +17,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -43,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
 import com.example.financeapp.ClientDetail
+import com.example.financeapp.Settings
 import androidx.compose.ui.res.stringResource
 import com.example.financeapp.R
 import androidx.compose.foundation.text.KeyboardOptions
@@ -69,6 +74,30 @@ fun ClientListScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(imageVector = Icons.Default.ArrowBack, contentDescription = stringResource(R.string.desc_back))
+                    }
+                },
+                actions = {
+                    var expanded by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { expanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = stringResource(R.string.desc_menu),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.settings_title)) },
+                                onClick = {
+                                    expanded = false
+                                    onNavigate(Settings)
+                                }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

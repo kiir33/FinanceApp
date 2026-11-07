@@ -7,12 +7,14 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.financeapp.database.dao.AuditLogDao
+import com.example.financeapp.database.dao.AppSettingsDao
 import com.example.financeapp.database.dao.ClientDao
 import com.example.financeapp.database.dao.GroupAccountDao
 import com.example.financeapp.database.dao.GroupTransactionDao
 import com.example.financeapp.database.dao.LoanDao
 import com.example.financeapp.database.dao.SavingsDao
 import com.example.financeapp.database.dao.UserDao
+import com.example.financeapp.database.entities.AppSettings
 import com.example.financeapp.database.entities.AuditLog
 import com.example.financeapp.database.entities.Client
 import com.example.financeapp.database.entities.GroupAccount
@@ -33,9 +35,10 @@ import com.example.financeapp.database.entities.User
         User::class,
         GroupAccount::class,
         GroupTransaction::class,
-        AuditLog::class
+        AuditLog::class,
+        AppSettings::class
     ],
-    version = 9,
+version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -46,6 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun groupAccountDao(): GroupAccountDao
     abstract fun groupTransactionDao(): GroupTransactionDao
     abstract fun auditLogDao(): AuditLogDao
+    abstract fun appSettingsDao(): AppSettingsDao
 
     companion object {
         @Volatile
@@ -198,6 +202,24 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration from version 9 to 10: Add app_settings table for configurable settings
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `app_settings` (
+                        `key` TEXT PRIMARY KEY NOT NULL,
+                        `value` TEXT NOT NULL
+                    )
+                """.trimIndent())
+
+                // Insert default loan_to_savings_ratio setting (80%)
+                db.execSQL("""
+                    INSERT OR IGNORE INTO `app_settings` (`key`, `value`)
+                    VALUES ('loan_to_savings_ratio', '0.8')
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -205,7 +227,18 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "finance_database.db"
                 )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+.addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                    .addCallback(object : RoomDatabase.Callback() {
+                        override fun onCreate(db: SupportSQLiteDatabase) {
+                            super.onCreate(db)
+                            // Fresh installs are created directly at the current version, so the
+                            // migration above never runs. Seed the default ratio explicitly.
+                            db.execSQL("""
+                                INSERT OR IGNORE INTO `app_settings` (`key`, `value`)
+                                VALUES ('loan_to_savings_ratio', '0.8')
+                            """.trimIndent())
+                        }
+                    })
                     .build()
                 INSTANCE = instance
                 instance
