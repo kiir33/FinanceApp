@@ -1,33 +1,34 @@
 # Model Configuration — Centralized Fallback Chains
 # Edit this file to change models for any role; all agents read from here.
+# ⚠️ RULE: On every prompt involving CODE IMPLEMENTATION, the role-specific
+#   model chain from your primary/fallbacks MUST be used. Not applicable when
+#   preparing docs, asking simple questions, or planning (Phase 7, etc.).
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ROLE: lead (orchestrator, architecture review, final approval)
 # ─────────────────────────────────────────────────────────────────────────────
 lead:
-  primary: "nvidia/nvidia/nemotron-3-ultra-550b-a55b"
+  primary: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
   fallbacks:
-    - "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free"
-    - "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"   # last resort
+    - "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free"   # Free ultra when available
+    - "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"       # Same model fallback
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ROLE: worker (junior engineers — implementation)
 # ─────────────────────────────────────────────────────────────────────────────
 worker:
-  primary: "opencode/deepseek-v4.1-flash-free"
+  primary: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
   fallbacks:
-    - "openrouter/deepseek/deepseek-v4.1-flash-1017"
-    - "openrouter/~deepseek/deepseek-pro-latest"
-    - "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"   # last resort
+    - "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"        # Same model, different instance
+    - "nvidia/z-ai/glm-5.3-flash"                            # GLM as NVIDIA fallback only
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ROLE: reviewer (PR review — GLM)
+# ROLE: reviewer (PR review — NVIDIA models)
 # ─────────────────────────────────────────────────────────────────────────────
 reviewer:
-  primary: "opencode/glm-5.3-flash-free"
+  primary: "nvidia/z-ai/glm-5.3-flash"
   fallbacks:
-    - "nvidia/z-ai/glm-5.3-flash"
-    - "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"   # last resort
+    - "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"  # Nano reasoning fallback
 
 # ─────────────────────────────────────────────────────────────────────────────
 # GLOBAL SETTINGS
