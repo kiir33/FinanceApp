@@ -36,6 +36,7 @@ interface UserDao {
         SELECT u.* FROM users u
         LEFT JOIN clients c ON u.clientId = c.id
         WHERE u.username = :loginId
+           OR u.phoneNumber = :loginId
            OR c.phoneNumber = :loginId
            OR CAST(c.clientId AS TEXT) = :loginId
         LIMIT 1

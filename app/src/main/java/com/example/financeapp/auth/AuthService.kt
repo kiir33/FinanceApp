@@ -7,7 +7,6 @@ import com.example.financeapp.database.AppDatabase
 import com.example.financeapp.database.dao.AuditLogDao
 import com.example.financeapp.database.dao.UserDao
 import com.example.financeapp.database.entities.AuditLog
-import com.example.financeapp.database.entities.Client
 import com.example.financeapp.database.entities.User
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +19,6 @@ class AuthService private constructor(
 ) {
     val userDao: UserDao = db.userDao()
     val auditLogDao: AuditLogDao = db.auditLogDao()
-    val clientDao = db.clientDao()
 
     companion object {
         @Volatile
@@ -212,8 +210,7 @@ class AuthService private constructor(
         username: String,
         password: String,
         fullName: String,
-        phoneNumber: String,
-        clientId: Int
+        phoneNumber: String
     ): AuthResult {
         return withContext(ioDispatcher) {
             val count = userDao.getUserCount()
@@ -237,19 +234,7 @@ class AuthService private constructor(
                 return@withContext AuthResult.AdminCreationFailure.ValidationError("Username already exists")
             }
 
-            // Create or get client
-            var client: Client? = clientDao.getClientByClientId(clientId)
-            if (client == null) {
-                val newClientId = clientDao.insertClient(Client(
-                    clientId = clientId,
-                    name = fullName,
-                    phoneNumber = phoneNumber,
-                    address = ""
-                ))
-                client = clientDao.getClientById(newClientId)
-            }
-
-            // Create admin user
+            // Create admin user (without client record - admins are not members)
             val salt = PasswordHasher.generateSalt()
             val passwordHash = PasswordHasher.hashPassword(password, salt)
 
@@ -258,7 +243,8 @@ class AuthService private constructor(
                 passwordHash = passwordHash,
                 salt = salt,
                 role = SessionManager.ROLE_ADMIN,
-                clientId = client?.id,
+                clientId = null, // Admin has no client ID - not a member
+                phoneNumber = phoneNumber.filter { it.isDigit() },
                 isActive = true,
                 failedAttempts = 0,
                 lockedUntil = null,

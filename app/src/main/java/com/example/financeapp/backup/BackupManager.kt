@@ -193,6 +193,7 @@ class BackupManager(private val context: Context) {
         put("salt", u.salt)
         put("role", u.role)
         if (u.clientId != null) put("clientId", u.clientId)
+        if (u.phoneNumber != null) put("phoneNumber", u.phoneNumber)
         put("isActive", u.isActive)
         put("failedAttempts", u.failedAttempts)
         if (u.lockedUntil != null) put("lockedUntil", u.lockedUntil)
@@ -273,12 +274,12 @@ class BackupManager(private val context: Context) {
                     db.clearAllTables()
 
                     // Restore data
-                    restoreClients(db, jsonObj)
+                    restoreClients(db, jsonObj, adminClientIds(jsonObj))
                     restoreSavingsAccounts(db, jsonObj)
                     restoreSavingsTransactions(db, jsonObj)
                     restoreLoans(db, jsonObj)
                     restoreLoanRepayments(db, jsonObj)
-                    restoreUsers(db, jsonObj)
+                    restoreUsers(db, jsonObj, adminClientPhones(jsonObj))
                     restoreGroupAccount(db, jsonObj)
                     restoreGroupTransactions(db, jsonObj)
                     restoreAuditLogs(db, jsonObj)
@@ -311,12 +312,58 @@ class BackupManager(private val context: Context) {
     }
 
     // Restore methods
-    private suspend fun restoreClients(db: AppDatabase, json: JsonObject) {
+
+    /**
+     * Client row ids that belong to ADMIN users. Admins are not members, so these rows must
+     * never be restored (otherwise a restored pre-v8 backup re-adds the admin to the member list).
+     */
+    private fun adminClientIds(json: JsonObject): Set<Long> {
+        val arr = json["users"]?.jsonArray ?: return emptySet()
+        return arr.mapNotNull { elem ->
+            val obj = elem.jsonObject
+            if (obj["role"]?.jsonPrimitive?.content == "ADMIN") {
+                obj["clientId"]?.jsonPrimitive?.long
+            } else {
+                null
+            }
+        }.toSet()
+    }
+
+    /**
+     * Phone numbers of the admin Client rows that [restoreClients] skips. Pre-v8 backups stored
+     * the admin phone only on the Client row, so it must be recovered from here for phone login.
+     */
+    private fun adminClientPhones(json: JsonObject): Map<Long, String> {
+        val clients = json["clients"]?.jsonArray ?: return emptyMap()
+        val phonesByRowId = clients.mapNotNull { elem ->
+            val obj = elem.jsonObject
+            val rowId = obj["id"]?.jsonPrimitive?.long ?: return@mapNotNull null
+            val phone = obj["phoneNumber"]?.jsonPrimitive?.content ?: return@mapNotNull null
+            rowId to phone
+        }.toMap()
+
+        val users = json["users"]?.jsonArray ?: return emptyMap()
+        return users.mapNotNull { elem ->
+            val obj = elem.jsonObject
+            if (obj["role"]?.jsonPrimitive?.content != "ADMIN") return@mapNotNull null
+            val clientId = obj["clientId"]?.jsonPrimitive?.long ?: return@mapNotNull null
+            val phone = phonesByRowId[clientId] ?: return@mapNotNull null
+            clientId to phone
+        }.toMap()
+    }
+
+    private suspend fun restoreClients(
+        db: AppDatabase,
+        json: JsonObject,
+        excludeClientIds: Set<Long> = emptySet()
+    ) {
         val arr = json["clients"]?.jsonArray ?: return
         for (elem in arr) {
             val obj = elem.jsonObject
+            val rowId = obj["id"]?.jsonPrimitive?.long ?: 0
+            if (rowId in excludeClientIds) continue
             val client = Client(
-                id = obj["id"]?.jsonPrimitive?.long ?: 0,
+                id = rowId,
                 clientId = obj["clientId"]?.jsonPrimitive?.int ?: 0,
                 name = obj["name"]?.jsonPrimitive?.content ?: "",
                 phoneNumber = obj["phoneNumber"]?.jsonPrimitive?.content ?: "",
@@ -395,17 +442,28 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    private suspend fun restoreUsers(db: AppDatabase, json: JsonObject) {
+    private suspend fun restoreUsers(
+        db: AppDatabase,
+        json: JsonObject,
+        adminPhoneByClientId: Map<Long, String> = emptyMap()
+    ) {
         val arr = json["users"]?.jsonArray ?: return
         for (elem in arr) {
             val obj = elem.jsonObject
+            val isAdmin = obj["role"]?.jsonPrimitive?.content == "ADMIN"
+            val backupClientId = obj["clientId"]?.jsonPrimitive?.long
             val user = User(
                 id = obj["id"]?.jsonPrimitive?.long ?: 0,
                 username = obj["username"]?.jsonPrimitive?.content ?: "",
                 passwordHash = obj["passwordHash"]?.jsonPrimitive?.content ?: "",
                 salt = obj["salt"]?.jsonPrimitive?.content ?: "",
                 role = obj["role"]?.jsonPrimitive?.content ?: "MEMBER",
-                clientId = obj["clientId"]?.jsonPrimitive?.long,
+                // Admins are never linked to a member record, even if the backup predates v8.
+                clientId = if (isAdmin) null else backupClientId,
+                // Pre-v8 backups have no users.phoneNumber; recover it from the skipped admin
+                // Client row so phone login keeps working after a restore.
+                phoneNumber = obj["phoneNumber"]?.jsonPrimitive?.content
+                    ?: if (isAdmin) backupClientId?.let { adminPhoneByClientId[it] } else null,
                 isActive = obj["isActive"]?.jsonPrimitive?.boolean ?: true,
                 failedAttempts = obj["failedAttempts"]?.jsonPrimitive?.int ?: 0,
                 lockedUntil = obj["lockedUntil"]?.jsonPrimitive?.long,
@@ -655,12 +713,12 @@ class BackupManager(private val context: Context) {
                 // 5. Restore in single transaction
                 db.withTransaction {
                     db.clearAllTables()
-                    restoreClients(db, jsonObj)
+                    restoreClients(db, jsonObj, adminClientIds(jsonObj))
                     restoreSavingsAccounts(db, jsonObj)
                     restoreSavingsTransactions(db, jsonObj)
                     restoreLoans(db, jsonObj)
                     restoreLoanRepayments(db, jsonObj)
-                    restoreUsers(db, jsonObj)
+                    restoreUsers(db, jsonObj, adminClientPhones(jsonObj))
                     restoreGroupAccount(db, jsonObj)
                     restoreGroupTransactions(db, jsonObj)
                     restoreAuditLogs(db, jsonObj)
