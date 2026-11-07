@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class BankViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -78,6 +79,22 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
     val totalInterestEarned: StateFlow<Double> = repository.totalInterestEarned
         .map { it ?: 0.0 }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+    // Settings
+    private val _loanToSavingsRatio = MutableStateFlow(0.8)
+    val loanToSavingsRatio: StateFlow<Double> = _loanToSavingsRatio
+
+    // Load settings on init
+    init {
+        loadSettings()
+    }
+
+    private fun loadSettings() {
+        viewModelScope.launch {
+            val ratio = repository.getLoanToSavingsRatio()
+            _loanToSavingsRatio.value = ratio
+        }
+    }
 
     // Client search
     val searchQuery = MutableStateFlow("")
@@ -240,7 +257,26 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            // The 80% savings cap and treasury balance are validated atomically inside
+            // Pre-check: Calculate max allowed loan based on savings and configured ratio
+            val borrowerAccount = repository.getSavingsAccountByClientId(clientId)
+            val borrowerSavingsAmount = borrowerAccount?.balance ?: 0.0
+
+            var guarantorSavingsAmount = 0.0
+            if (guarantorId != null) {
+                val guarantorAccount = repository.getSavingsAccountByClientId(guarantorId)
+                guarantorSavingsAmount = guarantorAccount?.balance ?: 0.0
+            }
+
+            val ratio = loanToSavingsRatio.value
+            val maxLoanAmount = (borrowerSavingsAmount + guarantorSavingsAmount) * ratio
+
+            if (amount > maxLoanAmount) {
+                val ratioPercent = (ratio * 100).toInt()
+                onError("Loan amount exceeds ${ratioPercent}% savings limit. Maximum allowed: Rs. ${String.format(Locale.getDefault(), "%,.0f", maxLoanAmount)}")
+                return@launch
+            }
+
+            // The savings cap and treasury balance are validated atomically inside
             // BankRepository.disburseLoan() so concurrent disbursements cannot bypass them.
 
             // outstandingBalance tracks principal remaining only.
@@ -257,7 +293,27 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
                 ),
                 recordedByUserId = currentUserId
             )
-            if (success) onSuccess() else onError("Failed to disburse loan - savings limit or treasury funds insufficient.")
+            if (success) {
+                onSuccess()
+            } else {
+                // The repository re-validates atomically. Re-read the persisted ratio/savings so a
+                // rejection caused by the savings cap still reports the correct maximum instead of
+                // always blaming the treasury.
+                val latestRatio = repository.getLoanToSavingsRatio()
+                val latestBorrowerSavings = repository.getSavingsAccountByClientId(clientId)?.balance ?: 0.0
+                val latestGuarantorSavings = if (guarantorId != null) {
+                    repository.getSavingsAccountByClientId(guarantorId)?.balance ?: 0.0
+                } else {
+                    0.0
+                }
+                val latestMaxLoanAmount = (latestBorrowerSavings + latestGuarantorSavings) * latestRatio
+                if (amount > latestMaxLoanAmount) {
+                    val ratioPercent = (latestRatio * 100).toInt()
+                    onError("Loan amount exceeds ${ratioPercent}% savings limit. Maximum allowed: Rs. ${String.format(Locale.getDefault(), "%,.0f", latestMaxLoanAmount)}")
+                } else {
+                    onError("Failed to disburse loan - treasury funds insufficient.")
+                }
+            }
         }
     }
 
@@ -474,6 +530,20 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
     fun updateGroupAccountBankInfo(bankName: String, bankAccountNumber: String) {
         viewModelScope.launch {
             repository.updateGroupAccountBankInfo(bankName, bankAccountNumber)
+        }
+    }
+
+    fun updateLoanToSavingsRatio(ratio: Double, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            // Clamp ratio between 10% and 200%
+            val clampedRatio = ratio.coerceIn(0.1, 2.0)
+            val success = repository.setLoanToSavingsRatio(clampedRatio)
+            if (success) {
+                _loanToSavingsRatio.value = clampedRatio
+                onSuccess()
+            } else {
+                onError("Failed to update loan-to-savings ratio")
+            }
         }
     }
 
