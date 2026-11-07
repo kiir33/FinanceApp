@@ -48,6 +48,7 @@ import com.example.financeapp.R
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import com.example.financeapp.ui.main.BankViewModel
+import com.example.financeapp.util.normalizePhoneNumber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -274,8 +275,8 @@ fun AddClientDialog(
             TextButton(
                 onClick = {
                     val clientIdVal = clientIdStr.toIntOrNull()
-                    val cleanPhone = phone.replace("+", "").trim()
-                    val isPhoneValid = cleanPhone.isNotEmpty() && cleanPhone.all { it.isDigit() } && cleanPhone.length in 7..15
+                    val cleanPhone = normalizePhoneNumber(phone)
+                    val isPhoneValid = cleanPhone.length in 7..15
                     
                     if (name.isBlank() || phone.isBlank() || address.isBlank() || clientIdStr.isBlank()) {
                         errorMsgResId = R.string.dialog_add_client_error_required

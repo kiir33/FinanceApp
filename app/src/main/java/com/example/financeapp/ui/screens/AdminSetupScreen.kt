@@ -81,10 +81,6 @@ fun AdminSetupScreen(
     var passwordError by remember { mutableStateOf<String?>(null) }
     var confirmPasswordError by remember { mutableStateOf<String?>(null) }
 
-    // Client ID field - for the admin's own member ID
-    var clientIdStr by remember { mutableStateOf("") }
-    var clientIdError by remember { mutableStateOf<String?>(null) }
-
     val validateForm = {
         var valid = true
         usernameError = if (username.isBlank()) context.getString(R.string.admin_setup_error_username_required) else null
@@ -104,13 +100,8 @@ fun AdminSetupScreen(
             else -> null
         }
         confirmPasswordError = if (confirmPassword != password) context.getString(R.string.admin_setup_error_password_mismatch) else null
-        clientIdError = if (clientIdStr.isBlank()) context.getString(R.string.admin_setup_error_client_id_required)
-        else {
-            val clientId = clientIdStr.toIntOrNull()
-            if (clientId == null || clientId <= 0) context.getString(R.string.admin_setup_error_invalid_client_id) else null
-        }
         valid = usernameError == null && fullNameError == null && phoneError == null &&
-                passwordError == null && confirmPasswordError == null && clientIdError == null
+                passwordError == null && confirmPasswordError == null
         valid
     }
 
@@ -119,15 +110,13 @@ fun AdminSetupScreen(
             isLoading = true
             errorMessage = null
 
-            val clientId = clientIdStr.toIntOrNull() ?: 0
             coroutineScope.launch {
                 val result = withContext(Dispatchers.IO) {
                     authService.createInitialAdmin(
                         username = username,
                         password = password,
                         fullName = fullName,
-                        phoneNumber = phoneNumber,
-                        clientId = clientId
+                        phoneNumber = phoneNumber
                     )
                 }
                 isLoading = false
@@ -260,19 +249,6 @@ fun AdminSetupScreen(
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-                        )
-
-                        // Member ID (Client ID) field
-                        OutlinedTextField(
-                            value = clientIdStr,
-                            onValueChange = { clientIdStr = it; clientIdError = null },
-                            label = { Text(stringResource(R.string.admin_setup_client_id_label)) },
-                            placeholder = { Text(stringResource(R.string.admin_setup_client_id_hint)) },
-                            isError = clientIdError != null,
-                            supportingText = { if (clientIdError != null) Text(clientIdError!!, color = MaterialTheme.colorScheme.error) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
 
                         // Password field

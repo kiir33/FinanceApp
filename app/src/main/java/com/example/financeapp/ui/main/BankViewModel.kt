@@ -19,6 +19,7 @@ import com.example.financeapp.database.entities.LoanRepayment
 import com.example.financeapp.database.entities.SavingsAccount
 import com.example.financeapp.database.entities.SavingsTransaction
 import com.example.financeapp.database.entities.User
+import com.example.financeapp.util.normalizePhoneNumber
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -154,11 +155,17 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
 
     fun createClient(name: String, phoneNumber: String, address: String, clientId: Int) {
         viewModelScope.launch {
-            // Normalize phone number by removing + and spaces
-            val cleanPhoneNumber = phoneNumber.replace("+", "").trim()
-            val generatedId = repository.insertClient(
-                Client(clientId = clientId, name = name, phoneNumber = cleanPhoneNumber, address = address)
-            )
+            val cleanPhoneNumber = normalizePhoneNumber(phoneNumber)
+            // The dialog validates uniqueness first, but the DB unique indices are the final guard
+            // against races with a concurrent insert. Swallow that constraint failure instead of
+            // crashing, and do not create an orphan savings account.
+            val generatedId = try {
+                repository.insertClient(
+                    Client(clientId = clientId, name = name, phoneNumber = cleanPhoneNumber, address = address)
+                )
+            } catch (e: android.database.sqlite.SQLiteConstraintException) {
+                return@launch
+            }
             // Create a default savings account for the new client
             repository.insertSavingsAccount(
                 SavingsAccount(clientId = generatedId, accountNumber = "SAV-${100000 + generatedId}")
