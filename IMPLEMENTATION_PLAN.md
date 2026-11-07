@@ -924,3 +924,12 @@ To avoid build breaks, implement and verify the project phase by phase:
 - [ ] Set `android:allowBackup="false"` in `AndroidManifest.xml`.
 - [ ] Conduct edge-case testing: invalid passwords, corrupted `.apex` files, loan exceeding 80% limit, expired lockouts.
 - [ ] Tag release commit in git.
+
+### Phase 8: Release & Signing
+- [ ] Configure release signing config in `app/build.gradle.kts`
+- [ ] Add signing property placeholders to `gradle.properties`
+- [ ] Add keystore + signing secrets to GitHub Actions (`RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`)
+- [ ] Update CI workflow: decode keystore, auto-bump version, build signed APK, publish release
+- [ ] Add `*.jks` / `*.keystore` to `.gitignore`
+- [ ] Create `CHANGELOG.md` with v1.0.0 entry
+- [ ] Tag `v1.0.0` on `main` and push to trigger first release

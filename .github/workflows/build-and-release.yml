@@ -56,8 +56,24 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Configure release signing
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release-keystore.jks"
+          echo "RELEASE_STORE_FILE=$RUNNER_TEMP/release-keystore.jks" >> $GITHUB_ENV
+
+      - name: Compute version from tag
+        id: version
+        run: |
+          TAG=${GITHUB_REF_NAME#v}
+          MAJOR=$(echo "$TAG" | cut -d. -f1)
+          MINOR=$(echo "$TAG" | cut -d. -f2)
+          PATCH=$(echo "$TAG" | cut -d. -f3)
+          VERSION_CODE=$((MAJOR * 1000000 + MINOR * 1000 + PATCH))
+          echo "version_name=$TAG" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+
       - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon -PversionCode=${{ steps.version.outputs.version_code }} -PversionName=${{ steps.version.outputs.version_name }} -PRELEASE_STORE_FILE=$RUNNER_TEMP/release-keystore.jks -PRELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }} -PRELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }} -PRELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}
 
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
@@ -66,4 +82,4 @@ jobs:
           name: ${{ format('Release {0}', github.ref_name) }}
           draft: false
           prerelease: false
-          files: app/build/outputs/apk/release/app-release-unsigned.apk
+          files: app/build/outputs/apk/release/app-release.apk

@@ -12,14 +12,27 @@ android {
         applicationId = "com.example.financeapp"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = project.findProperty("versionCode")?.toString()?.toInt() ?: 1
+        versionName = project.findProperty("versionName")?.toString() ?: "1.0.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            val storeFileValue = project.findProperty("RELEASE_STORE_FILE")?.toString()
+            if (storeFileValue?.isNotEmpty() == true) {
+                storeFile = file(storeFileValue)
+            }
+            storePassword = project.findProperty("RELEASE_STORE_PASSWORD")?.toString()
+            keyAlias = project.findProperty("RELEASE_KEY_ALIAS")?.toString()
+            keyPassword = project.findProperty("RELEASE_KEY_PASSWORD")?.toString()
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
