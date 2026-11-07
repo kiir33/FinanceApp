@@ -2,9 +2,11 @@ package com.example.financeapp.data
 
 import androidx.room.withTransaction
 import com.example.financeapp.database.AppDatabase
+import com.example.financeapp.database.dao.AppSettingsDao
 import com.example.financeapp.database.dao.GroupAccountDao
 import com.example.financeapp.database.dao.GroupTransactionDao
 import com.example.financeapp.database.entities.AuditLog
+import com.example.financeapp.database.entities.AppSettings
 import com.example.financeapp.database.entities.Client
 import com.example.financeapp.database.entities.GroupAccount
 import com.example.financeapp.database.entities.GroupTransaction
@@ -28,6 +30,7 @@ class BankRepository(private val db: AppDatabase) {
     private val groupTransactionDao = db.groupTransactionDao()
     private val userDao = db.userDao()
     private val auditLogDao = db.auditLogDao()
+    private val appSettingsDao = db.appSettingsDao()
 
     val allClients: Flow<List<Client>> = clientDao.getAllClients()
     val allUsers: Flow<List<User>> = userDao.getAllUsers()
@@ -96,6 +99,10 @@ class BankRepository(private val db: AppDatabase) {
 
     suspend fun getSavingsAccountById(accountId: Long): SavingsAccount? {
         return savingsDao.getAccountById(accountId)
+    }
+
+    suspend fun getSavingsAccountByClientId(clientId: Long): SavingsAccount? {
+        return savingsDao.getAccountByClientId(clientId).first()
     }
 
     // Savings Transactions with Treasury Sync
@@ -206,24 +213,32 @@ class BankRepository(private val db: AppDatabase) {
     ): Boolean {
         return withContext(Dispatchers.IO) {
             db.withTransaction {
-                // 1. Insert loan
-                val loanId = loanDao.insertLoan(loan)
-
-                // 2. Savings Cap Check (80% of Borrower + Guarantor savings combined).
+                // 1. Savings Cap Check (configurable ratio of Borrower + Guarantor savings combined).
                 // Executed inside the transaction so concurrent disbursements cannot bypass it.
+                // IMPORTANT: validate before inserting anything. `return@withTransaction false`
+                // commits the transaction (only a thrown exception rolls it back), so the loan must
+                // not be inserted until every check has passed.
                 val borrowerSavings = savingsDao.getAccountByClientId(loan.clientId).first()?.balance ?: 0.0
                 val guarantorSavings = loan.guarantorId
                     ?.let { savingsDao.getAccountByClientId(it).first()?.balance }
                     ?: 0.0
-                val maxLoanAmount = (borrowerSavings + guarantorSavings) * 0.8
+
+                // Get configurable loan-to-savings ratio (default 0.8 = 80%)
+                val ratioStr = appSettingsDao.getSettingValue("loan_to_savings_ratio") ?: "0.8"
+                val loanToSavingsRatio = ratioStr.toDoubleOrNull() ?: 0.8
+
+                val maxLoanAmount = (borrowerSavings + guarantorSavings) * loanToSavingsRatio
 
                 if (loan.amount > maxLoanAmount) {
                     return@withTransaction false
                 }
 
-                // 3. Treasury sync - check treasury cash balance
+                // 2. Treasury sync - check treasury cash balance
                 val groupAccount = groupAccountDao.getGroupAccountById() ?: return@withTransaction false
                 if (groupAccount.cashBalance < loan.amount) return@withTransaction false
+
+                // 3. All checks passed - now persist the loan.
+                val loanId = loanDao.insertLoan(loan)
 
                 val updatedGroupAccount = groupAccount.copy(
                     cashBalance = groupAccount.cashBalance - loan.amount,
@@ -489,6 +504,27 @@ class BankRepository(private val db: AppDatabase) {
                     action = "UPDATE_BANK_INFO",
                     recordedByUserId = 1,
                     details = "Updated bank info: $bankName, $bankAccountNumber"
+                )
+                true
+            }
+        }
+    }
+
+    // Settings
+    suspend fun getLoanToSavingsRatio(): Double {
+        val ratioStr = appSettingsDao.getSettingValue("loan_to_savings_ratio") ?: "0.8"
+        return ratioStr.toDoubleOrNull() ?: 0.8
+    }
+
+    suspend fun setLoanToSavingsRatio(ratio: Double): Boolean {
+        return withContext(Dispatchers.IO) {
+            db.withTransaction {
+                val clampedRatio = ratio.coerceIn(0.1, 2.0)
+                appSettingsDao.insertSetting(
+                    AppSettings(
+                        key = "loan_to_savings_ratio",
+                        value = clampedRatio.toString()
+                    )
                 )
                 true
             }
