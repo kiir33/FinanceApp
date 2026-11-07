@@ -180,11 +180,11 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // 1. Normalize stored phone numbers to digits only. Mirrors normalizePhoneNumber()
-                //    used by all Kotlin call sites.
+                //    used by all Kotlin call sites (SQLite has no regex, so strip known separators).
                 db.execSQL("""
                     UPDATE `clients`
-                    SET `phoneNumber` = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                        `phoneNumber`, '+', ''), ' ', ''), '-', ''), '(', ''), ')', ''), '.', '')
+                    SET `phoneNumber` = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                        `phoneNumber`, '+', ''), ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '/', ''), '#', ''), '*', ''), '&', '')
                 """.trimIndent())
 
                 // 2. De-duplicate non-destructively: keep the earliest row per phone number and
