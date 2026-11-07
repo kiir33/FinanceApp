@@ -35,7 +35,7 @@ import com.example.financeapp.database.entities.User
         GroupTransaction::class,
         AuditLog::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -128,6 +128,35 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration from version 7 to 8: Remove admin client records and set admin clientId to null
+        // Admins should not be members and should not appear in the member list
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Set admin users' clientId to NULL (admins are not members)
+                db.execSQL("UPDATE `users` SET `clientId` = NULL WHERE `role` = 'ADMIN'")
+
+                // 2. Delete client records that were linked to admin users AND have no financial data
+                // This ensures admins don't appear in the member list (ClientListScreen)
+                // We only delete clients that:
+                // - Were linked to an admin user (via the old clientId in users table before we nulled it)
+                // - Have no savings accounts
+                // - Have no loans
+                // - Have no savings transactions
+                // - Have no loan repayments
+                db.execSQL("""
+                    DELETE FROM `clients`
+                    WHERE `id` IN (
+                        SELECT u.`clientId` FROM `users` u
+                        WHERE u.`role` = 'ADMIN' AND u.`clientId` IS NOT NULL
+                    )
+                    AND `id` NOT IN (SELECT DISTINCT `clientId` FROM `savings_accounts` WHERE `clientId` IS NOT NULL)
+                    AND `id` NOT IN (SELECT DISTINCT `clientId` FROM `loans` WHERE `clientId` IS NOT NULL)
+                    AND `id` NOT IN (SELECT DISTINCT `clientId` FROM `savings_transactions` WHERE `clientId` IS NOT NULL)
+                    AND `id` NOT IN (SELECT DISTINCT `guarantorId` FROM `loans` WHERE `guarantorId` IS NOT NULL)
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -135,7 +164,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "finance_database.db"
                 )
-                    .addMigrations(MIGRATION_6_7)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
                     .build()
                 INSTANCE = instance
                 instance

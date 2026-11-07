@@ -212,8 +212,7 @@ class AuthService private constructor(
         username: String,
         password: String,
         fullName: String,
-        phoneNumber: String,
-        clientId: Int
+        phoneNumber: String
     ): AuthResult {
         return withContext(ioDispatcher) {
             val count = userDao.getUserCount()
@@ -237,19 +236,7 @@ class AuthService private constructor(
                 return@withContext AuthResult.AdminCreationFailure.ValidationError("Username already exists")
             }
 
-            // Create or get client
-            var client: Client? = clientDao.getClientByClientId(clientId)
-            if (client == null) {
-                val newClientId = clientDao.insertClient(Client(
-                    clientId = clientId,
-                    name = fullName,
-                    phoneNumber = phoneNumber,
-                    address = ""
-                ))
-                client = clientDao.getClientById(newClientId)
-            }
-
-            // Create admin user
+            // Create admin user (without client record - admins are not members)
             val salt = PasswordHasher.generateSalt()
             val passwordHash = PasswordHasher.hashPassword(password, salt)
 
@@ -258,7 +245,7 @@ class AuthService private constructor(
                 passwordHash = passwordHash,
                 salt = salt,
                 role = SessionManager.ROLE_ADMIN,
-                clientId = client?.id,
+                clientId = null, // Admin has no client ID - not a member
                 isActive = true,
                 failedAttempts = 0,
                 lockedUntil = null,
