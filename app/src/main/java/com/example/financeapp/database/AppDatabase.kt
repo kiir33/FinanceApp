@@ -38,7 +38,7 @@ import com.example.financeapp.database.entities.User
         AuditLog::class,
         AppSettings::class
     ],
-    version = 10,
+version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -227,7 +227,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "finance_database.db"
                 )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+.addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
