@@ -14,6 +14,7 @@ import com.example.financeapp.database.entities.LoanRepayment
 import com.example.financeapp.database.entities.SavingsAccount
 import com.example.financeapp.database.entities.SavingsTransaction
 import com.example.financeapp.database.entities.User
+import com.example.financeapp.util.normalizePhoneNumber
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -358,15 +359,24 @@ class BackupManager(private val context: Context) {
         excludeClientIds: Set<Long> = emptySet()
     ) {
         val arr = json["clients"]?.jsonArray ?: return
+        // Older backups may contain the same phone number more than once (that is exactly what the
+        // unique index now forbids). Keep the first one and suffix the rest so restore still works.
+        val seenPhones = mutableSetOf<String>()
         for (elem in arr) {
             val obj = elem.jsonObject
             val rowId = obj["id"]?.jsonPrimitive?.long ?: 0
             if (rowId in excludeClientIds) continue
+            val normalizedPhone = normalizePhoneNumber(obj["phoneNumber"]?.jsonPrimitive?.content ?: "")
+            val phoneNumber = if (seenPhones.add(normalizedPhone)) {
+                normalizedPhone
+            } else {
+                "$normalizedPhone#$rowId"
+            }
             val client = Client(
                 id = rowId,
                 clientId = obj["clientId"]?.jsonPrimitive?.int ?: 0,
                 name = obj["name"]?.jsonPrimitive?.content ?: "",
-                phoneNumber = obj["phoneNumber"]?.jsonPrimitive?.content ?: "",
+                phoneNumber = phoneNumber,
                 address = obj["address"]?.jsonPrimitive?.content ?: "",
                 createdAt = obj["createdAt"]?.jsonPrimitive?.long ?: System.currentTimeMillis()
             )

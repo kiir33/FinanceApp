@@ -11,6 +11,7 @@ import com.example.financeapp.database.entities.GroupTransaction
 import com.example.financeapp.database.entities.GroupTxType
 import com.example.financeapp.database.entities.Loan
 import com.example.financeapp.database.entities.LoanRepayment
+import com.example.financeapp.util.normalizePhoneNumber
 import com.example.financeapp.database.entities.SavingsAccount
 import com.example.financeapp.database.entities.SavingsTransaction
 import com.example.financeapp.database.entities.User
@@ -51,11 +52,19 @@ class BankRepository(private val db: AppDatabase) {
     }
 
     suspend fun getClientByClientId(clientId: Int): Client? {
-        return clientDao.getClientById(clientId.toLong())
+        return clientDao.getClientByClientId(clientId)
     }
 
     fun searchClients(query: String): Flow<List<Client>> {
         return clientDao.searchClients("%$query%")
+    }
+
+    suspend fun isPhoneNumberUnique(phoneNumber: String): Boolean {
+        return clientDao.countByPhoneNumber(normalizePhoneNumber(phoneNumber)) == 0
+    }
+
+    suspend fun isClientIdNameUnique(clientId: Int, name: String): Boolean {
+        return clientDao.countByClientIdAndName(clientId, name) == 0
     }
 
     private suspend fun writeAuditLog(

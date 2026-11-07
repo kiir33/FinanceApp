@@ -6,7 +6,11 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "clients",
-    indices = [Index(value = ["clientId"], unique = true)]
+    indices = [
+        Index(value = ["clientId"], unique = true),
+        Index(value = ["phoneNumber"], unique = true),
+        Index(value = ["clientId", "name"], unique = true)
+    ]
 )
 data class Client(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

@@ -35,7 +35,7 @@ import com.example.financeapp.database.entities.User
         GroupTransaction::class,
         AuditLog::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -169,6 +169,35 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration from version 8 to 9: enforce unique phone numbers and unique (clientId, name).
+        // Implemented in-place (no table recreate) so all financial data and foreign keys survive.
+        // NOTE: deliberately avoids window functions (ROW_NUMBER) because they are unavailable on
+        // SQLite < 3.25, which is what Android bundles below API 30 (minSdk is 24).
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Normalize stored phone numbers to digits only. Mirrors normalizePhoneNumber()
+                //    used by all Kotlin call sites (SQLite has no regex, so strip known separators).
+                db.execSQL("""
+                    UPDATE `clients`
+                    SET `phoneNumber` = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                        `phoneNumber`, '+', ''), ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '/', ''), '#', ''), '*', ''), '&', '')
+                """.trimIndent())
+
+                // 2. De-duplicate non-destructively: keep the earliest row per phone number and
+                //    append '#<row id>' to the others so no member/transaction data is dropped.
+                db.execSQL("""
+                    UPDATE `clients`
+                    SET `phoneNumber` = `phoneNumber` || '#' || `id`
+                    WHERE `id` NOT IN (SELECT MIN(`id`) FROM `clients` GROUP BY `phoneNumber`)
+                """.trimIndent())
+
+                // 3. Add the unique indices declared on the Client entity. `clientId` already has a
+                //    unique index from earlier versions, so only these two are new.
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_clients_phoneNumber` ON `clients` (`phoneNumber`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_clients_clientId_name` ON `clients` (`clientId`, `name`)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -176,7 +205,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "finance_database.db"
                 )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .build()
                 INSTANCE = instance
                 instance
