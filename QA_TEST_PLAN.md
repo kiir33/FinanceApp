@@ -86,6 +86,9 @@ This document outlines the manual and automated test procedures for Phase 7 hard
 - [ ] ProGuard/R8 rules verified
 - [ ] Version code/name updated in `build.gradle.kts`
 - [ ] CHANGELOG updated
+- [ ] Release APK is signed (`apksigner verify --verbose app-release.apk`)
+- [ ] Version code/name match the git tag
+- [ ] `*.jks` / `*.keystore` not present in git history
 - [ ] Git tag created: `git tag -a v1.0.0 -m "Release v1.0.0"`
 - [ ] Tag pushed: `git push origin v1.0.0`
 
