@@ -60,6 +60,7 @@ import com.example.financeapp.BackupRestore
 import com.example.financeapp.ClientList
 import com.example.financeapp.SavingsList
 import com.example.financeapp.LoansList
+import com.example.financeapp.Settings
 import com.example.financeapp.ui.main.BankViewModel
 import com.example.financeapp.database.entities.Client
 import com.example.financeapp.database.entities.Loan
@@ -158,6 +159,13 @@ fun DashboardScreen(
                         onClick = {
                             expanded = false
                             onNavigate(BackupRestore)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.settings_title)) },
+                        onClick = {
+                            expanded = false
+                            onNavigate(Settings)
                         }
                     )
                     DropdownMenuItem(
