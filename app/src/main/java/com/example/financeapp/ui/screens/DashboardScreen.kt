@@ -101,10 +101,13 @@ fun DashboardScreen(
     var showAddClientDialog by remember { mutableStateOf(false) }
     var suggestedClientId by remember { mutableStateOf(0) }
 
-    // Fetch suggested client ID when dialog opens
+    // Fetch the suggested client ID when the dialog opens; reset it once the dialog closes so
+    // the next open always shows a fresh value rather than the previous suggestion.
     LaunchedEffect(showAddClientDialog) {
         if (showAddClientDialog) {
             suggestedClientId = viewModel.getNextClientId()
+        } else {
+            suggestedClientId = 0
         }
     }
     var showDepositDialog by remember { mutableStateOf(false) }
@@ -472,7 +475,9 @@ fun DashboardScreen(
         }
     }
 
-    if (showAddClientDialog) {
+    // Only compose the dialog once the suggestion has loaded (0 means "still loading"), otherwise
+    // the Member ID field would initialize with a stale 0.
+    if (showAddClientDialog && suggestedClientId > 0) {
         AddClientDialog(
             onDismiss = { showAddClientDialog = false },
             onConfirm = { name, phone, address, clientId ->
