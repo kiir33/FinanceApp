@@ -1,5 +1,6 @@
 package com.example.financeapp.importer
 
+import android.database.sqlite.SQLiteConstraintException
 import androidx.room.withTransaction
 import com.example.financeapp.auth.PasswordHasher
 import com.example.financeapp.database.entities.AuditLog
@@ -186,8 +187,10 @@ class CsvImporter(
                 return@withContext ImportResult(false, "Cross-validation failed: ${crossErrors.joinToString { "${it.row}:${it.column} - ${it.reason}" }}")
             }
 
-            // Execute import in single transaction
-            return@withContext db.withTransaction {
+            // Execute import in single transaction. The commit re-validates, but a concurrent
+            // insert between validation and commit could still violate a unique index.
+            return@withContext try {
+                db.withTransaction {
                 val existingUsernames = userDao.getAllUsers().first().map { it.username }.toMutableSet()
                 val memberIdToDbId = mutableMapOf<Int, Long>()
                 val memberIdToUsername = mutableMapOf<Int, String>()
@@ -301,6 +304,12 @@ class CsvImporter(
                     importedSavings = savingsRows.size,
                     importedLoans = loanRows.size,
                     credentialsSheet = credentialsSheet
+                )
+                }
+            } catch (e: SQLiteConstraintException) {
+                ImportResult(
+                    success = false,
+                    message = "Import failed: a member with the same Member ID or phone number already exists."
                 )
             }
         }
