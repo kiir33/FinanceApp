@@ -444,6 +444,10 @@ class BankViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    suspend fun getNextClientId(): Int {
+        return repository.getMaxClientId() + 1
+    }
+
     fun updateGroupAccountBankInfo(bankName: String, bankAccountNumber: String) {
         viewModelScope.launch {
             repository.updateGroupAccountBankInfo(bankName, bankAccountNumber)

@@ -48,6 +48,8 @@ import com.example.financeapp.R
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import com.example.financeapp.ui.main.BankViewModel
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.LaunchedEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +62,14 @@ fun ClientListScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val clients by viewModel.searchResults.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var suggestedClientId by remember { mutableStateOf(0) }
+
+    // Fetch suggested client ID when dialog opens
+    LaunchedEffect(showAddDialog) {
+        if (showAddDialog) {
+            suggestedClientId = viewModel.getNextClientId()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -190,7 +200,8 @@ fun ClientListScreen(
             },
             checkClientIdUnique = { id, callback ->
                 viewModel.checkClientIdUnique(id, callback)
-            }
+            },
+            suggestedClientId = suggestedClientId
         )
     }
 }
@@ -199,12 +210,13 @@ fun ClientListScreen(
 fun AddClientDialog(
     onDismiss: () -> Unit,
     onConfirm: (name: String, phone: String, address: String, clientId: Int) -> Unit,
-    checkClientIdUnique: (Int, (Boolean) -> Unit) -> Unit
+    checkClientIdUnique: (Int, (Boolean) -> Unit) -> Unit,
+    suggestedClientId: Int = 0
 ) {
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
-    var clientIdStr by remember { mutableStateOf("") }
+    var clientIdStr by remember { mutableStateOf(suggestedClientId.toString()) }
 
     var errorMsgResId by remember { mutableStateOf<Int?>(null) }
 

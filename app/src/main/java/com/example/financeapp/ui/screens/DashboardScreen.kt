@@ -35,6 +35,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -98,6 +99,14 @@ fun DashboardScreen(
     val session by SessionManager.currentSession.collectAsState()
     val scope = rememberCoroutineScope()
     var showAddClientDialog by remember { mutableStateOf(false) }
+    var suggestedClientId by remember { mutableStateOf(0) }
+
+    // Fetch suggested client ID when dialog opens
+    LaunchedEffect(showAddClientDialog) {
+        if (showAddClientDialog) {
+            suggestedClientId = viewModel.getNextClientId()
+        }
+    }
     var showDepositDialog by remember { mutableStateOf(false) }
     var showRepayDialog by remember { mutableStateOf(false) }
 
@@ -472,7 +481,8 @@ fun DashboardScreen(
             },
             checkClientIdUnique = { id, callback ->
                 viewModel.checkClientIdUnique(id, callback)
-            }
+            },
+            suggestedClientId = suggestedClientId
         )
     }
 
