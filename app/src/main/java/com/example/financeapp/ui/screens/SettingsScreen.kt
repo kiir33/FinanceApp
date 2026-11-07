@@ -50,7 +50,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.financeapp.R
-import com.example.financeapp.Settings
 import com.example.financeapp.ui.main.BankViewModel
 import androidx.navigation3.runtime.NavKey
 import kotlinx.coroutines.launch

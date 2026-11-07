@@ -228,6 +228,17 @@ abstract class AppDatabase : RoomDatabase() {
                     "finance_database.db"
                 )
                     .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                    .addCallback(object : RoomDatabase.Callback() {
+                        override fun onCreate(db: SupportSQLiteDatabase) {
+                            super.onCreate(db)
+                            // Fresh installs are created directly at the current version, so the
+                            // migration above never runs. Seed the default ratio explicitly.
+                            db.execSQL("""
+                                INSERT OR IGNORE INTO `app_settings` (`key`, `value`)
+                                VALUES ('loan_to_savings_ratio', '0.8')
+                            """.trimIndent())
+                        }
+                    })
                     .build()
                 INSTANCE = instance
                 instance

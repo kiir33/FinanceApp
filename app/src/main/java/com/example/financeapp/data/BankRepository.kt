@@ -6,6 +6,7 @@ import com.example.financeapp.database.dao.AppSettingsDao
 import com.example.financeapp.database.dao.GroupAccountDao
 import com.example.financeapp.database.dao.GroupTransactionDao
 import com.example.financeapp.database.entities.AuditLog
+import com.example.financeapp.database.entities.AppSettings
 import com.example.financeapp.database.entities.Client
 import com.example.financeapp.database.entities.GroupAccount
 import com.example.financeapp.database.entities.GroupTransaction
@@ -520,7 +521,7 @@ class BankRepository(private val db: AppDatabase) {
             db.withTransaction {
                 val clampedRatio = ratio.coerceIn(0.1, 2.0)
                 appSettingsDao.insertSetting(
-                    com.example.financeapp.database.entities.AppSettings(
+                    AppSettings(
                         key = "loan_to_savings_ratio",
                         value = clampedRatio.toString()
                     )
