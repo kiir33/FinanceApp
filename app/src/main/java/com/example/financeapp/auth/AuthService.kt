@@ -246,6 +246,7 @@ class AuthService private constructor(
                 salt = salt,
                 role = SessionManager.ROLE_ADMIN,
                 clientId = null, // Admin has no client ID - not a member
+                phoneNumber = phoneNumber.filter { it.isDigit() },
                 isActive = true,
                 failedAttempts = 0,
                 lockedUntil = null,

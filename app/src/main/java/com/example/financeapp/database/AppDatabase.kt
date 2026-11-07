@@ -128,32 +128,44 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // Migration from version 7 to 8: Remove admin client records and set admin clientId to null
-        // Admins should not be members and should not appear in the member list
+        // Migration from version 7 to 8: Remove admin client records and set admin clientId to null.
+        // Admins should not be members and should not appear in the member list.
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 1. Set admin users' clientId to NULL (admins are not members)
-                db.execSQL("UPDATE `users` SET `clientId` = NULL WHERE `role` = 'ADMIN'")
+                // 1. Users now carry their own phone number. Admins have no Client row, so this is
+                //    the only place their phone can live (and it keeps phone login working).
+                db.execSQL("ALTER TABLE `users` ADD COLUMN `phoneNumber` TEXT")
 
-                // 2. Delete client records that were linked to admin users AND have no financial data
-                // This ensures admins don't appear in the member list (ClientListScreen)
-                // We only delete clients that:
-                // - Were linked to an admin user (via the old clientId in users table before we nulled it)
-                // - Have no savings accounts
-                // - Have no loans
-                // - Have no savings transactions
-                // - Have no loan repayments
+                // 2. Preserve the admin's phone number before the linked Client row is removed.
+                db.execSQL("""
+                    UPDATE `users`
+                    SET `phoneNumber` = (
+                        SELECT `phoneNumber` FROM `clients`
+                        WHERE `clients`.`id` = `users`.`clientId`
+                    )
+                    WHERE `role` = 'ADMIN'
+                      AND `clientId` IS NOT NULL
+                      AND `phoneNumber` IS NULL
+                """.trimIndent())
+
+                // 3. Delete the Client row linked to admin users, but only when it has no financial
+                //    data attached. Run BEFORE clearing users.clientId so the link is still visible.
+                //    NOTE: savings_transactions has no clientId column (it links via accountId), so
+                //    the savings_accounts guard below is what protects transaction history.
                 db.execSQL("""
                     DELETE FROM `clients`
                     WHERE `id` IN (
-                        SELECT u.`clientId` FROM `users` u
-                        WHERE u.`role` = 'ADMIN' AND u.`clientId` IS NOT NULL
+                        SELECT `clientId` FROM `users`
+                        WHERE `role` = 'ADMIN' AND `clientId` IS NOT NULL
                     )
                     AND `id` NOT IN (SELECT DISTINCT `clientId` FROM `savings_accounts` WHERE `clientId` IS NOT NULL)
                     AND `id` NOT IN (SELECT DISTINCT `clientId` FROM `loans` WHERE `clientId` IS NOT NULL)
-                    AND `id` NOT IN (SELECT DISTINCT `clientId` FROM `savings_transactions` WHERE `clientId` IS NOT NULL)
                     AND `id` NOT IN (SELECT DISTINCT `guarantorId` FROM `loans` WHERE `guarantorId` IS NOT NULL)
                 """.trimIndent())
+
+                // 4. Safety net: admins must never be linked to a member record. (Deleting the
+                //    client above already triggers ON DELETE SET NULL when FK enforcement is on.)
+                db.execSQL("UPDATE `users` SET `clientId` = NULL WHERE `role` = 'ADMIN'")
             }
         }
 

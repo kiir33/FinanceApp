@@ -193,6 +193,7 @@ class BackupManager(private val context: Context) {
         put("salt", u.salt)
         put("role", u.role)
         if (u.clientId != null) put("clientId", u.clientId)
+        if (u.phoneNumber != null) put("phoneNumber", u.phoneNumber)
         put("isActive", u.isActive)
         put("failedAttempts", u.failedAttempts)
         if (u.lockedUntil != null) put("lockedUntil", u.lockedUntil)
@@ -273,7 +274,7 @@ class BackupManager(private val context: Context) {
                     db.clearAllTables()
 
                     // Restore data
-                    restoreClients(db, jsonObj)
+                    restoreClients(db, jsonObj, adminClientIds(jsonObj))
                     restoreSavingsAccounts(db, jsonObj)
                     restoreSavingsTransactions(db, jsonObj)
                     restoreLoans(db, jsonObj)
@@ -311,12 +312,35 @@ class BackupManager(private val context: Context) {
     }
 
     // Restore methods
-    private suspend fun restoreClients(db: AppDatabase, json: JsonObject) {
+
+    /**
+     * Client row ids that belong to ADMIN users. Admins are not members, so these rows must
+     * never be restored (otherwise a restored pre-v8 backup re-adds the admin to the member list).
+     */
+    private fun adminClientIds(json: JsonObject): Set<Long> {
+        val arr = json["users"]?.jsonArray ?: return emptySet()
+        return arr.mapNotNull { elem ->
+            val obj = elem.jsonObject
+            if (obj["role"]?.jsonPrimitive?.content == "ADMIN") {
+                obj["clientId"]?.jsonPrimitive?.long
+            } else {
+                null
+            }
+        }.toSet()
+    }
+
+    private suspend fun restoreClients(
+        db: AppDatabase,
+        json: JsonObject,
+        excludeClientIds: Set<Long> = emptySet()
+    ) {
         val arr = json["clients"]?.jsonArray ?: return
         for (elem in arr) {
             val obj = elem.jsonObject
+            val rowId = obj["id"]?.jsonPrimitive?.long ?: 0
+            if (rowId in excludeClientIds) continue
             val client = Client(
-                id = obj["id"]?.jsonPrimitive?.long ?: 0,
+                id = rowId,
                 clientId = obj["clientId"]?.jsonPrimitive?.int ?: 0,
                 name = obj["name"]?.jsonPrimitive?.content ?: "",
                 phoneNumber = obj["phoneNumber"]?.jsonPrimitive?.content ?: "",
@@ -405,7 +429,13 @@ class BackupManager(private val context: Context) {
                 passwordHash = obj["passwordHash"]?.jsonPrimitive?.content ?: "",
                 salt = obj["salt"]?.jsonPrimitive?.content ?: "",
                 role = obj["role"]?.jsonPrimitive?.content ?: "MEMBER",
-                clientId = obj["clientId"]?.jsonPrimitive?.long,
+                // Admins are never linked to a member record, even if the backup predates v8.
+                clientId = if (obj["role"]?.jsonPrimitive?.content == "ADMIN") {
+                    null
+                } else {
+                    obj["clientId"]?.jsonPrimitive?.long
+                },
+                phoneNumber = obj["phoneNumber"]?.jsonPrimitive?.content,
                 isActive = obj["isActive"]?.jsonPrimitive?.boolean ?: true,
                 failedAttempts = obj["failedAttempts"]?.jsonPrimitive?.int ?: 0,
                 lockedUntil = obj["lockedUntil"]?.jsonPrimitive?.long,
@@ -655,7 +685,7 @@ class BackupManager(private val context: Context) {
                 // 5. Restore in single transaction
                 db.withTransaction {
                     db.clearAllTables()
-                    restoreClients(db, jsonObj)
+                    restoreClients(db, jsonObj, adminClientIds(jsonObj))
                     restoreSavingsAccounts(db, jsonObj)
                     restoreSavingsTransactions(db, jsonObj)
                     restoreLoans(db, jsonObj)
