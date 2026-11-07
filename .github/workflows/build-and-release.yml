@@ -60,9 +60,6 @@ jobs:
         run: |
           echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release-keystore.jks"
           echo "RELEASE_STORE_FILE=$RUNNER_TEMP/release-keystore.jks" >> $GITHUB_ENV
-          echo "RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }}" >> $GITHUB_ENV
-          echo "RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}" >> $GITHUB_ENV
-          echo "RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}" >> $GITHUB_ENV
 
       - name: Compute and bump version
         id: version
@@ -78,7 +75,7 @@ jobs:
           echo "version_code=$NEXT_CODE" >> $GITHUB_OUTPUT
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon -PversionCode=${{ steps.version.outputs.version_code }} -PversionName=${{ steps.version.outputs.version_name }}
+        run: ./gradlew assembleRelease --no-daemon -PversionCode=${{ steps.version.outputs.version_code }} -PversionName=${{ steps.version.outputs.version_name }} -PRELEASE_STORE_FILE=$RUNNER_TEMP/release-keystore.jks -PRELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }} -PRELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }} -PRELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}
 
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2

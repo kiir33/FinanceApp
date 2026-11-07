@@ -13,15 +13,18 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = project.findProperty("versionCode")?.toString()?.toInt() ?: 1
-        versionName = project.findProperty("versionName") ?: "1.0.0"
+        versionName = project.findProperty("versionName")?.toString() ?: "1.0.0"
     }
 
     signingConfigs {
         create("release") {
-            storeFile = project.findProperty("RELEASE_STORE_FILE")?.let { file(it) }
-            storePassword = project.findProperty("RELEASE_STORE_PASSWORD")
-            keyAlias = project.findProperty("RELEASE_KEY_ALIAS")
-            keyPassword = project.findProperty("RELEASE_KEY_PASSWORD")
+            val storeFileValue = project.findProperty("RELEASE_STORE_FILE")?.toString()
+            if (storeFileValue?.isNotEmpty() == true) {
+                storeFile = file(storeFileValue)
+            }
+            storePassword = project.findProperty("RELEASE_STORE_PASSWORD")?.toString()
+            keyAlias = project.findProperty("RELEASE_KEY_ALIAS")?.toString()
+            keyPassword = project.findProperty("RELEASE_KEY_PASSWORD")?.toString()
         }
     }
 
