@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -40,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +52,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.financeapp.R
+import com.example.financeapp.auth.AuthService
 import com.example.financeapp.auth.SessionManager
+import com.example.financeapp.database.entities.AuditLog
 import com.example.financeapp.database.entities.Client
 import com.example.financeapp.database.entities.Loan
 import com.example.financeapp.database.entities.SavingsAccount
@@ -77,6 +81,8 @@ fun MemberDashboardScreen(
 ) {
     val viewModel: BankViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val authService = remember { AuthService.getInstance(context.applicationContext as android.app.Application) }
 
     // Get current member's clientId from session
     val currentClientId = SessionManager.getCurrentClientId()
@@ -111,6 +117,22 @@ fun MemberDashboardScreen(
                 actions = {
                     IconButton(onClick = { showChangePassword = true }) {
                         Icon(imageVector = Icons.Default.Settings, contentDescription = stringResource(R.string.member_dashboard_change_password))
+                    }
+                    IconButton(onClick = {
+                        val currentSession = SessionManager.currentSession.value
+                        if (currentSession != null) {
+                            scope.launch {
+                                authService.auditLogDao.insertAuditLog(AuditLog(
+                                    userId = currentSession.userId,
+                                    username = currentSession.username,
+                                    action = "USER_LOGOUT",
+                                    details = "User logged out"
+                                ))
+                            }
+                            SessionManager.clearSession()
+                        }
+                    }) {
+                        Icon(imageVector = Icons.Default.ExitToApp, contentDescription = stringResource(R.string.member_dashboard_logout))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

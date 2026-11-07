@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +51,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.example.financeapp.R
+import com.example.financeapp.auth.AuthService
+import com.example.financeapp.auth.SessionManager
+import com.example.financeapp.database.entities.AuditLog
 import androidx.navigation3.runtime.NavKey
 import com.example.financeapp.BackupRestore
 import com.example.financeapp.ClientList
@@ -71,6 +75,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Button
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -90,6 +95,8 @@ fun DashboardScreen(
     val savingsList by viewModel.allSavingsWithClients.collectAsState()
     val loansList by viewModel.allLoansWithClients.collectAsState()
     val context = LocalContext.current
+    val session by SessionManager.currentSession.collectAsState()
+    val scope = rememberCoroutineScope()
     var showAddClientDialog by remember { mutableStateOf(false) }
     var showDepositDialog by remember { mutableStateOf(false) }
     var showRepayDialog by remember { mutableStateOf(false) }
@@ -139,6 +146,26 @@ fun DashboardScreen(
                         onClick = {
                             expanded = false
                             onNavigate(BackupRestore)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.dashboard_logout)) },
+                        onClick = {
+                            expanded = false
+                            val currentSession = session
+                            if (currentSession != null) {
+                                scope.launch {
+                                    val application = context.applicationContext as android.app.Application
+                                    val authService = AuthService.getInstance(application)
+                                    authService.auditLogDao.insertAuditLog(AuditLog(
+                                        userId = currentSession.userId,
+                                        username = currentSession.username,
+                                        action = "USER_LOGOUT",
+                                        details = "User logged out"
+                                    ))
+                                }
+                                SessionManager.clearSession()
+                            }
                         }
                     )
                 }
