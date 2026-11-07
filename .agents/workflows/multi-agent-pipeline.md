@@ -75,3 +75,55 @@ For each ticket in wave:
 - After 3 review loops: `status/changes-requested` + lead comment on issue
 - Security blockers: immediate lead intervention
 - Build failures (env): documented, not junior fault
+
+## Phase 7: Model Role Compliance & Daily Workflow Checklist ✅
+(Applied for EVERY PR created by agents)
+
+### Daily Workflow Checklist (MANDATORY for every PR)
+```
+- [ ] Model role enforcement verified: all implementation commits use correct model chain
+  from .agents/config/models.yaml (primary + fallbacks respected)
+- [ ] Co-author attribution verified on all commits/PRs:
+  `Co-authored-by: <model> <model>@users.noreply.github.com`
+- [ ] Fallback logs checked: `.agents/logs/model-fallback.log` 
+  (rotate weekly; >2 fallbacks/wave → escalate)
+- [ ] No `fallbackToDestructiveMigration()` in any merged code
+- [ ] Security checks verified:
+  - PBKDF2: 120k iterations, 256-bit key, 16-byte salt, Base64 NO_WRAP ✅
+  - AES-256-GCM: 12-byte IV, 128-bit tag ✅
+  - Constant-time comparison (`slowEquals`) implemented ✅
+- [ ] Code standards verified:
+  - Kotlin 2.x, Jetpack Compose M3, Navigation 3, Room ✅
+  - Coroutines: `Dispatchers.IO` for DB/crypto, `Dispatchers.Default` for CPU ✅
+  - Sealed interfaces for result types (`AuthResult`, `BackupResult`) ✅
+  - Flow for reactive data ✅
+  - RFC 4180 CSV with UTF-8 BOM ✅
+- [ ] Architecture verified:
+  - Clean MVVM: Repository → ViewModel → Compose UI ✅
+  - Offline-first, no cloud sync required for core features ✅
+  - StateFlow for reactive UI state ✅
+  - Navigation 3 type-safe keys (`NavKey`) ✅
+- [ ] Phase-specific checks:
+  - Phase 1+2: Auth/crypto, DB migration SQL, FK, indices, transaction boundaries ✅
+  - Phase 3+4: CSV RFC 4180, BOM, escaping, dry-run/commit atomicity ✅
+  - Phase 5+6: .apex format, AES-GCM, PBKDF2, integrity checks, passphrase ✅
+  - Phase 7: `FLAG_SECURE` in MainActivity, `allowBackup="false"` ✅
+```
+
+### Checklist Enforcement Protocol
+1. **Lead agent** verifies ALL PRs before labeling `pr/merge-ready`
+2. **GLM reviewer** posts review including checklist summary in body
+3. **Human merge** cannot proceed without checklist completion (enforced via GitHub branch protection rules)
+4. **Escalation**: If any checklist item fails → return to junior for fixes → re-review loop
+
+### PR Creation Gate
+- PRs will be HELD in `status/in-review` until Daily Workflow Checklist is complete
+- Lead agent signs off on checklist completion before updating status to `pr/merge-ready`
+- Human operator merges only after checklist `100% complete`
+
+### Phase 7: Final Hardening & QA
+
+- [ ] Add `FLAG_SECURE` in `MainActivity.onCreate()` to prevent unauthorized screenshots.
+- [ ] Set `android:allowBackup="false"` in `AndroidManifest.xml`.
+- [ ] Conduct edge-case testing: invalid passwords, corrupted `.apex` files, loan exceeding 80% limit, expired lockouts.
+- [ ] Tag release commit in git.
