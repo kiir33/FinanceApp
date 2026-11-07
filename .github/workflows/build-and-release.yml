@@ -61,18 +61,16 @@ jobs:
           echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release-keystore.jks"
           echo "RELEASE_STORE_FILE=$RUNNER_TEMP/release-keystore.jks" >> $GITHUB_ENV
 
-      - name: Compute and bump version
+      - name: Compute version from tag
         id: version
         run: |
           TAG=${GITHUB_REF_NAME#v}
-          CURRENT_CODE=$(grep 'versionCode =' app/build.gradle.kts | grep -o '[0-9]\+' | head -1)
-          if [ -z "$CURRENT_CODE" ]; then
-            echo "ERROR: could not read current versionCode from app/build.gradle.kts" >&2
-            exit 1
-          fi
-          NEXT_CODE=$((CURRENT_CODE + 1))
+          MAJOR=$(echo "$TAG" | cut -d. -f1)
+          MINOR=$(echo "$TAG" | cut -d. -f2)
+          PATCH=$(echo "$TAG" | cut -d. -f3)
+          VERSION_CODE=$((MAJOR * 1000000 + MINOR * 1000 + PATCH))
           echo "version_name=$TAG" >> $GITHUB_OUTPUT
-          echo "version_code=$NEXT_CODE" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon -PversionCode=${{ steps.version.outputs.version_code }} -PversionName=${{ steps.version.outputs.version_name }} -PRELEASE_STORE_FILE=$RUNNER_TEMP/release-keystore.jks -PRELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }} -PRELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }} -PRELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}
