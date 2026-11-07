@@ -1,0 +1,63 @@
+#!/bin/bash
+# /clean-stale - Clean stale merged branches and worktrees
+# Usage: cd /path/to/repo && ./clean-stale  (from opencode prompt)
+#
+# This script:
+# 1. Removes all local Git branches that are merged to main (except main)
+# 2. Cleans stale worktrees from the {repo-name}:worktrees/ folder
+# 3. Provides a summary of cleanup actions
+
+echo "🔍 Checking for stale merged git branches..."
+
+# Get branches merged to main, excluding main itself
+# Format: one branch per line, skip the * main line
+MERGED_BRANCHES=$(git branch --merged main 2>/dev/null | grep -v '^\* *main' || true)
+
+# Further filter to only get feature branches (not main)
+# Remove any branch named exactly "main"
+MERGED_BRANCHES=$(echo "$MERGED_BRANCHES" | grep -v '^ *main$' || true)
+
+if [[ -n "$MERGED_BRANCHES" ]]; then
+    echo "📋 Found branch(es) merged to main - deleting..."
+    echo "$MERGED_BRANCHES" | while IFS= read -r branch; do
+        # Trim whitespace
+        branch=$(echo "$branch" | xargs)
+        if [[ -n "$branch" && "$branch" != "main" ]]; then
+            echo "  → Deleting: $branch"
+            git branch -D "$branch" 2>/dev/null && \
+            echo "  ✓ Successfully deleted: $branch" || \
+            echo "  ✗ Failed to delete: $branch"
+        fi
+    done
+else
+    echo "  No branches merged to main found."
+fi
+
+echo ""
+echo "🧹 Cleaning stale worktrees..."
+
+WORKTREES_DIR="${PWD}:worktrees"
+
+if [[ -d "$WORKTREES_DIR" ]]; then
+    # Use the existing clean-worktrees.sh script
+    echo "all" | bash "$PWD/.agents/clean-worktrees.sh" 2>/dev/null
+    echo "  ✓ Cleaned stale worktrees"
+else
+    echo "  No worktrees directory found: $WORKTREES_DIR"
+    echo "  (This is OK if no worktrees have been created yet.)"
+fi
+
+echo ""
+echo "=================================="
+echo "✅ Cleanup Complete"
+echo "=================================="
+echo ""
+echo "Current state:"
+BRANCH_COUNT=$(git branch | grep -v '^\* ' | wc -l)
+WORKTREE_COUNT=$(ls -la "$WORKTREES_DIR" 2>/dev/null | grep -c '^d' | tr -d ' ' 2>/dev/null || echo "0")
+echo "  • Local branches: $BRANCH_COUNT (excluding main)"
+echo "  • Worktrees: $WORKTREE_COUNT folders in $WORKTREES_DIR"
+echo ""
+echo "💡 Run this after merging PRs to keep the repo clean."
+echo "=================================="
+exit 0
