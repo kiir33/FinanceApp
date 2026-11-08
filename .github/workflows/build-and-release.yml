@@ -87,7 +87,9 @@ jobs:
 
   publish-debug:
     name: Publish Latest Debug APK
+    needs: build
     if: |
+      needs.build.result == 'success' &&
       github.event_name == 'pull_request' &&
       github.event.action == 'closed' &&
       github.event.pull_request.merged == true &&
