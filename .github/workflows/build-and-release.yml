@@ -9,6 +9,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [labeled, closed]
   workflow_dispatch:
 
 permissions:
@@ -83,3 +84,42 @@ jobs:
           draft: false
           prerelease: false
           files: app/build/outputs/apk/release/app-release.apk
+
+  publish-debug:
+    name: Publish Latest Debug APK
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'latest-debug')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Publish Debug Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: debug-pr-${{ github.event.pull_request.number }}-${{ github.sha }}
+          name: Debug Build (PR #${{ github.event.pull_request.number }})
+          body: |
+            Debug APK from PR #${{ github.event.pull_request.number }} merged into main.
+            Built from commit `${{ github.sha }}`.
+          draft: false
+          prerelease: false
+          files: app/build/outputs/apk/debug/app-debug.apk
