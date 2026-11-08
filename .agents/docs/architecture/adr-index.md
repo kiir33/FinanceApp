@@ -31,19 +31,32 @@
 - Force-push to remote branch for PR updates
 - Rebase onto main before PR to avoid conflicts
 
-## ADR-003: GitHub Labels as State Machine
+## ADR-003: GitHub Project Board as State Machine (supersedes label-based status)
 
-**Date**: 2026-10-31
+**Date**: 2026-11-08
 **Status**: Accepted
 
-**Decision**: Use GitHub labels for issue/PR state tracking:
-- Issues: exactly one `status/*` label + permanent `agent/deepseek-jN`
-- PRs: exactly one review-state label + permanent `pr/author-deepseek-jN`
+**Decision**: Issue status (Backlog, Todo, In Progress, In Review, Done) is tracked on the FinanceApp GitHub project board, not via issue labels.
+
+**Board**: https://github.com/users/kiir33/projects/1/views/4
+
+- Move issues across board columns to reflect status (Backlog → Todo → In Progress → In Review → Done).
+- **Ticket movement permissions:**
+  - **Lead Engineer**: Backlog → Todo (only Todo items are ready to implement); In Review → Done only after verifying the PR was merged
+  - **Junior Engineer**: Todo → In Progress → In Review
+  - **PR Reviewer**: In Review → In Progress when changes are requested and rework is needed
+- **Skip rule**: Skip the ticket-moving step if the ticket has already been manually moved to the correct column.
+- Do NOT add `status/*` labels to issues — the board is the source of truth for status.
+- Agent label (`agent/<model>-jN`) remains a permanent record of who built it (may still be applied as a label).
+- PRs still use review-state labels: exactly one review-state label + permanent `pr/author-deepseek-jN`.
 
 **Consequences**:
-- Visual Kanban board via GitHub label filters
-- Automated transitions via `gh issue edit` / `gh pr edit`
-- Human-readable progress at a glance
+- Visual Kanban board via GitHub project board views
+- Status transitions via board column moves (not `gh issue edit` labels)
+- Human-readable progress at a glance via board views
+- Single source of truth for issue status across mobile and backend repos
+
+**See also**: `../../../FinanceApp-KnowledgeBase/AGENTS_AND_IMPLEMENTATION_FLOW.md` — agent roles and implementation flow (single source of truth).
 
 ## ADR-004: Co-Author Attribution Convention
 

@@ -2,10 +2,10 @@
 
 ## Phase 0: Setup (Lead)
 1. Parse IMPLEMENTATION_PLAN.md → create GitHub issues with specs
-2. Create labels: phase-N, type, agent, status, PR labels
+2. Create labels: phase-N, type, agent, PR labels
 3. Create worktrees for independent tickets (wave 1)
 4. Assign agent IDs (j1..jN) to issues
-5. Set initial `status/in-progress` + `agent/deepseek-jN`
+5. New issues default to **Backlog** on the project board — Lead moves them to **Todo** when ready for implementation (skip if already manually moved)
 6. Document in `.agents/docs/reports/wave-N-setup.md`
 
 ## Phase 1: Implementation (Juniors — Parallel)
@@ -15,20 +15,20 @@ For each ticket in wave:
 3. Commits with co-author
 4. Pushes branch
 5. Opens PR with `Closes #N`
-6. Lead updates: `status/in-review` + `agent/glm-reviewer` + `pr/reviewed-by-glm`
+6. Junior moves ticket **Todo → In Progress → In Review** on the project board (skip step if already manually moved)
 7. Junior replies with PR URL, sessionID
 
 ## Phase 2: Review (GLM — Per PR)
 1. Lead spawns GLM reviewer with PR + issue context
 2. GLM reviews diff, posts `REQUEST_CHANGES` or `COMMENT`
 3. If `REQUEST_CHANGES`:
-   - Lead updates: `status/changes-requested` + `pr/changes-requested`
-   - Lead sends change requests to junior's sessionID
-   - Junior fixes, commits, pushes → auto-updates PR
-   - Lead updates: `status/in-review` + `pr/reviewed-by-glm`
-   - Loop to step 2 (max 3 rounds)
+    - Reviewer moves ticket **In Review → In Progress** on the project board + `pr/changes-requested` (skip if already manually moved)
+    - Lead sends change requests to junior's sessionID
+    - Junior fixes, commits, pushes → auto-updates PR
+    - Junior moves ticket back to **In Review** + `pr/reviewed-by-glm`
+    - Loop to step 2 (max 3 rounds)
 4. If clean:
-   - Lead updates: `status/approved` + `agent/nemotron-lead` + `pr/approved-by-nemotron` + `pr/merge-ready`
+    - Ticket stays in **In Review** + `pr/approved-by-lead` + `pr/merge-ready`
 
 ## Phase 3: Lead Approval
 1. Lead personally re-reads final diff for each PR
@@ -37,7 +37,7 @@ For each ticket in wave:
 4. PRs remain unmerged — human merges from GitHub
 
 ## Phase 4: Wave Completion
-1. Lead updates all merged PR issues: `status/done`
+1. Lead verifies each PR is merged, then moves ticket **In Review → Done** on the project board (skip if already manually moved) — only Lead may move to Done
 2. Next wave unblocked → repeat from Phase 0
 3. Final report: PR URLs, review loops, verdicts, escalations
 
@@ -72,7 +72,7 @@ For each ticket in wave:
 | #15 CsvImportScreen | #14 |
 
 ## Escalation Protocol
-- After 3 review loops: `status/changes-requested` + lead comment on issue
+- After 3 review loops: move issue to **Changes Requested** on the project board + lead comment on issue
 - Security blockers: immediate lead intervention
 - Build failures (env): documented, not junior fault
 
@@ -117,7 +117,7 @@ For each ticket in wave:
 4. **Escalation**: If any checklist item fails → return to junior for fixes → re-review loop
 
 ### PR Creation Gate
-- PRs will be HELD in `status/in-review` until Daily Workflow Checklist is complete
+- PRs will be HELD in **In Review** on the project board until Daily Workflow Checklist is complete
 - Lead agent signs off on checklist completion before updating status to `pr/merge-ready`
 - Human operator merges only after checklist `100% complete`
 

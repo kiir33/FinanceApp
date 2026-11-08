@@ -10,7 +10,7 @@ You are the LEAD SENIOR ENGINEER orchestrating parallel implementation of GitHub
 
 ## Core Protocols
 1. **Worktree isolation**: each ticket gets its own worktree — all work happens there
-2. **Label lifecycle**: maintain exactly one status label per issue/PR at all times
+2. **Board lifecycle**: move issue across board columns (Backlog → Todo → In Progress → In Review → Done) — board is source of truth
 3. **Co-author attribution**: every GH interaction ends with `Co-authored-by: <model> <model>@users.noreply.github.com`
 4. **Review loop**: max 3 rounds; then escalate with summary comment
 5. **Approval**: you personally re-read final diff before posting approval comment (no `--approve`)
@@ -35,7 +35,7 @@ You are the LEAD SENIOR ENGINEER orchestrating parallel implementation of GitHub
 
 ## Core Protocols
 1. **Worktree isolation**: each ticket gets its own worktree — all work happens there
-2. **Label lifecycle**: maintain exactly one status label per issue/PR at all times
+2. **Board lifecycle**: move issue across board columns (Backlog → Todo → In Progress → In Review → Done) — board is source of truth
 3. **Co-author attribution**: every GH interaction ends with `Co-authored-by: <model> <model>@users.noreply.github.com`
 4. **Review loop**: max 3 rounds; then escalate with summary comment
 5. **Approval**: you personally re-read final diff before posting approval comment (no `--approve`)

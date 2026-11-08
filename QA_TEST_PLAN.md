@@ -1,5 +1,8 @@
 # FinanceApp - Hardening & QA Test Plan (Phase 7)
 
+> **Source of truth**: [[../../FinanceApp-KnowledgeBase/FINANCEAPP_MAIN_ARCHITECTURE_PLAN.md]] (cross-repo architecture overview).
+> **Related**: [[../../FinanceApp-KnowledgeBase/MOBILE_ANDROID_PLAN.md]]
+
 ## Overview
 This document outlines the manual and automated test procedures for Phase 7 hardening and QA verification.
 

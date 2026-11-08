@@ -1,5 +1,8 @@
 # Contributing Guidelines
 
+> **Source of truth**: [[../../FinanceApp-KnowledgeBase/FINANCEAPP_MAIN_ARCHITECTURE_PLAN.md]] (cross-repo architecture overview).
+> **Related**: [[../../FinanceApp-KnowledgeBase/MOBILE_ANDROID_PLAN.md]]
+
 ## Pull Requests
 
 ### Link GitHub Issues

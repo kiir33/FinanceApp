@@ -83,18 +83,28 @@ git worktree prune
 ls "$REPO_WORKTREES"
 ```
 
-### Status Label Lifecycle (Issues)
-```
-status/backlog → status/in-progress → status/in-review → status/changes-requested → status/fixing → status/in-review → ... → status/approved → status/done
-```
-- Exactly ONE status label per issue at all times
-- Agent label (`agent/deepseek-j{N}`) permanent record of who built it
+### Status — Managed via GitHub Project Board
+
+Issue status (Backlog, Todo, In Progress, In Review, Done) is tracked on the project board, not via issue labels:
+
+**Board**: https://github.com/users/kiir33/projects/1/views/4
+
+- Move issues across board columns (Backlog → Todo → In Progress → In Review → Done) to reflect status.
+- **New issues default to Backlog** — Lead moves them to Todo when ready for implementation (skip if already manually moved).
+- **Ticket movement permissions:**
+  - **Lead Engineer**: Backlog → Todo (only Todo items are ready to implement); In Review → Done only after verifying the PR was merged
+  - **Junior Engineer**: Todo → In Progress → In Review
+  - **PR Reviewer**: In Review → In Progress when changes are requested and rework is needed
+- **Skip rule**: Skip the ticket-moving step if the ticket has already been manually moved to the correct column.
+- Do NOT add `status/*` labels to issues — the board is the source of truth for status.
+- Agent label (`agent/deepseek-j{N}`) remains a permanent record of who built it (may still be applied as a label).
+
+**See also**: `../../../FinanceApp-KnowledgeBase/AGENTS_AND_IMPLEMENTATION_FLOW.md` — agent roles and implementation flow (single source of truth).
 
 ### PR Label Lifecycle
 ```
 pr/author-deepseek-j{N} (permanent) → pr/reviewed-by-glm → pr/changes-requested → pr/reviewed-by-glm → ... → pr/approved-by-nemotron + pr/merge-ready
 ```
-
 ### Git/GitHub Protocol
 
 #### Commit Standards
@@ -346,7 +356,7 @@ git worktree remove ../FinanceApp:worktrees/issue-N-some-feature
 4. **Escalation**: If any checklist item fails → return to junior for fixes → re-review loop
 
 ### PR Creation Gate
-- PRs will be HELD in `status/in-review` until Daily Workflow Checklist is complete
+- PRs will be HELD in **In Review** on the project board until Daily Workflow Checklist is complete
 - Lead agent signs off on checklist completion before updating status to `pr/merge-ready`
 - Human operator merges only after checklist `100% complete`
 
