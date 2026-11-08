@@ -9,7 +9,7 @@ on:
   pull_request:
     branches:
       - main
-    types: [labeled, closed]
+    types: [opened, synchronize, reopened, labeled, closed]
   workflow_dispatch:
 
 permissions:
