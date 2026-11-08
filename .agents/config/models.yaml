@@ -8,10 +8,10 @@
 # ROLE: lead (orchestrator, architecture review, final approval)
 # ─────────────────────────────────────────────────────────────────────────────
 lead:
-  primary: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+  primary: "nvidia/nemotron-3.5-super-vl-120b-a12b"
   fallbacks:
     - "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free"   # Free ultra when available
-    - "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"       # Same model fallback
+    - "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"       # Nano reasoning fallback
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ROLE: worker (junior engineers — implementation)
