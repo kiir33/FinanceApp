@@ -1,6 +1,8 @@
 # FinanceApp Release Plan — v1.0.0 (Regular Release)
 
 **Status:** Implemented — changes committed on `release-v1.0.0`, PR #60 open for review.
+> **Source of truth**: [[../../FinanceApp-KnowledgeBase/DEPLOYMENT_PLAN.md]] (cross-repo deployment overview).
+> **Related**: [[../../FinanceApp-KnowledgeBase/MOBILE_ANDROID_PLAN.md]], [[../../FinanceApp-KnowledgeBase/FINANCEAPP_MAIN_ARCHITECTURE_PLAN.md]]
 
 ## Goal
 

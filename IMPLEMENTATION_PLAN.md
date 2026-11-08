@@ -3,6 +3,8 @@
 > **Audience**: AI models (including compact/fast models like Gemini 1.5/2.0 Flash) and human developers implementing or maintaining this application.
 > **Status**: Approved Blueprint — Ready for Execution.
 > **Target Platform**: Android (Min SDK 24, Target SDK 36, Kotlin 2.x, Jetpack Compose, Navigation 3, Room SQLite).
+> **Source of truth**: [[../../FinanceApp-KnowledgeBase/FINANCEAPP_MAIN_ARCHITECTURE_PLAN.md]] (cross-repo architecture overview).
+> **Related**: [[../../FinanceApp-KnowledgeBase/RAILS_BACKEND_PLAN.md]], [[../../FinanceApp-KnowledgeBase/MOBILE_ANDROID_PLAN.md]], [[../../FinanceApp-KnowledgeBase/DEPLOYMENT_PLAN.md]]
 
 ---
 
